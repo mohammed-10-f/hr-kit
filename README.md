@@ -1,3 +1,29 @@
-# HR Kit — Free setup
+# HR Kit
 
-Cloudflare Workers + D1 only. No R2. Files are stored externally and HR Kit stores their URLs and metadata.
+مرجع داخلي لموظفي الموارد البشرية للنماذج والخطابات والملفات.
+
+## النطاق
+- النماذج
+- الخطابات
+- الملفات
+- بحث سريع وكلمات مفتاحية
+- ملفات مميزة
+- لوحة إدارة للمحتوى والأقسام
+- إخفاء/نشر/أرشفة/حذف الملفات
+- إدارة ترتيب وإظهار الأقسام
+- تصميم متجاوب للجوال والكمبيوتر
+
+## تشغيل محلي
+```bash
+npm install
+npm run db:local
+npx wrangler dev
+```
+
+## قاعدة البيانات
+بعد النسخة الأولى شغّل:
+```bash
+npm run db:remote
+```
+
+يجب ضبط `ADMIN_PASSWORD` كـ Secret في Cloudflare، وليس داخل الكود.

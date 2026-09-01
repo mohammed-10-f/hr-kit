@@ -2,49 +2,79 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#012152">
   <title>HR Kit — مرجع الموارد البشرية</title>
-  <meta name="description" content="نماذج وأدوات وملفات الموارد البشرية في مكان واحد">
+  <meta name="description" content="مرجع موظف الموارد البشرية للنماذج والخطابات والملفات.">
+  <link rel="icon" type="image/png" href="/assets/logo.png">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="/">
-      <span class="brand-mark">HR</span>
-      <span><strong>HR Kit</strong><small>مرجع الموارد البشرية</small></span>
-    </a>
-    <a class="admin-link" href="/admin.html">لوحة الإدارة</a>
+    <div class="container topbar-inner">
+      <a class="brand" href="/" aria-label="HR Kit">
+        <img src="/assets/logo.png" alt="محمد الروقي HR" class="brand-logo">
+      </a>
+      <div class="topbar-actions">
+        <a class="admin-link" href="/admin.html">إدارة المحتوى</a>
+      </div>
+    </div>
   </header>
 
   <main>
-    <section class="hero">
-      <div class="eyebrow">HR KIT</div>
-      <h1>كل ما تحتاجه في الموارد البشرية،<br><span>في مكان واحد.</span></h1>
-      <p>ابحث عن نموذج، خطاب، ملف Excel أو دليل تحتاجه في عملك.</p>
+    <section class="hero container">
+      <div class="hero-kicker"><span></span> HR KIT <span></span></div>
+      <h1>مرجع موظف الموارد البشرية</h1>
+      <p>النماذج والخطابات والملفات التي تحتاجها في عملك، في مكان واحد.</p>
       <div class="search-wrap">
-        <span>⌕</span>
-        <input id="search" placeholder="مثال: نموذج إخلاء طرف، طلب إجازة، حاسبة نهاية الخدمة..." autocomplete="off">
+        <span class="search-icon" aria-hidden="true">⌕</span>
+        <input id="search" type="search" placeholder="ابحث عن نموذج، خطاب أو ملف..." autocomplete="off" aria-label="البحث">
+        <button id="clear-search" class="clear-search hidden" type="button" aria-label="مسح البحث">×</button>
       </div>
-      <div id="suggestions" class="suggestions"></div>
     </section>
 
-    <section class="section">
+    <section class="section container">
       <div class="section-head">
-        <div><h2>تصفح حسب القسم</h2><p>اختر المجال الذي تبحث فيه</p></div>
+        <div>
+          <h2>تصفح حسب النوع</h2>
+          <p>اختر نوع المحتوى الذي تبحث عنه</p>
+        </div>
       </div>
       <div id="categories" class="categories"></div>
     </section>
 
-    <section class="section">
+    <section class="section container featured-section" id="featured-section">
       <div class="section-head">
-        <div><h2 id="results-title">أحدث الموارد</h2><p id="results-count"></p></div>
+        <div>
+          <h2>الأكثر استخدامًا</h2>
+          <p>ملفات مميزة وسريعة الوصول</p>
+        </div>
+      </div>
+      <div id="featured" class="resource-grid"></div>
+    </section>
+
+    <section class="section container">
+      <div class="section-head">
+        <div>
+          <h2 id="results-title">آخر التحديثات</h2>
+          <p id="results-count"></p>
+        </div>
       </div>
       <div id="resources" class="resource-grid"></div>
-      <div id="empty" class="empty hidden">ما لقينا نتائج. جرّب كلمة بحث مختلفة.</div>
+      <div id="empty" class="empty hidden">
+        <div class="empty-icon">⌕</div>
+        <strong>لم نجد نتائج</strong>
+        <p>جرّب كلمة بحث مختلفة أو تصفح الأقسام.</p>
+      </div>
     </section>
   </main>
 
-  <footer>HR Kit · مرجع الموارد البشرية</footer>
+  <footer>
+    <div class="container footer-inner">
+      <img src="/assets/logo.png" alt="" class="footer-logo">
+      <span>مرجع الموارد البشرية</span>
+    </div>
+  </footer>
   <script src="/app.js"></script>
 </body>
 </html>
