@@ -1,0 +1,22 @@
+name = "hr-kit"
+main = "src/index.js"
+compatibility_date = "2026-08-31"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "hr_kit_db"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "hr-kit-files"
+
+[vars]
+SITE_NAME = "HR Kit"
+
+# Set this as a secret in Cloudflare:
+# npx wrangler secret put ADMIN_PASSWORD

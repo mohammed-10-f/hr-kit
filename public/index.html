@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>HR Kit — مرجع الموارد البشرية</title>
+  <meta name="description" content="نماذج وأدوات وملفات الموارد البشرية في مكان واحد">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">
+      <span class="brand-mark">HR</span>
+      <span><strong>HR Kit</strong><small>مرجع الموارد البشرية</small></span>
+    </a>
+    <a class="admin-link" href="/admin.html">لوحة الإدارة</a>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="eyebrow">HR KIT</div>
+      <h1>كل ما تحتاجه في الموارد البشرية،<br><span>في مكان واحد.</span></h1>
+      <p>ابحث عن نموذج، خطاب، ملف Excel أو دليل تحتاجه في عملك.</p>
+      <div class="search-wrap">
+        <span>⌕</span>
+        <input id="search" placeholder="مثال: نموذج إخلاء طرف، طلب إجازة، حاسبة نهاية الخدمة..." autocomplete="off">
+      </div>
+      <div id="suggestions" class="suggestions"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div><h2>تصفح حسب القسم</h2><p>اختر المجال الذي تبحث فيه</p></div>
+      </div>
+      <div id="categories" class="categories"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div><h2 id="results-title">أحدث الموارد</h2><p id="results-count"></p></div>
+      </div>
+      <div id="resources" class="resource-grid"></div>
+      <div id="empty" class="empty hidden">ما لقينا نتائج. جرّب كلمة بحث مختلفة.</div>
+    </section>
+  </main>
+
+  <footer>HR Kit · مرجع الموارد البشرية</footer>
+  <script src="/app.js"></script>
+</body>
+</html>
