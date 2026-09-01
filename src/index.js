@@ -3,12 +3,35 @@ const cors=r=>{r.headers.set("Access-Control-Allow-Origin","*");r.headers.set("A
 function slugify(t){return t.trim().toLowerCase().replace(/[^\u0600-\u06FFa-z0-9]+/g,"-").replace(/^-+|-+$/g,"")||crypto.randomUUID()}
 function isAdmin(req,env){return !!env.ADMIN_PASSWORD&&(req.headers.get("Authorization")||"")===`Bearer ${env.ADMIN_PASSWORD}`}
 const bad=(m,s=400)=>json({error:m},s);
-async function admin(req,env,fn){if(!isAdmin(req,env))return cors(bad("Unauthorized",401));try{return cors(await fn())}catch(e){return cors(json({error:e.message||"Server error"},500))}}
+let schemaReadyPromise;
+async function ensureSchema(env){
+  if(schemaReadyPromise)return schemaReadyPromise;
+  schemaReadyPromise=(async()=>{
+    const catCols=await env.DB.prepare("PRAGMA table_info(categories)").all();
+    const resourceCols=await env.DB.prepare("PRAGMA table_info(resources)").all();
+    const hasCatVisible=(catCols.results||[]).some(c=>c.name==='is_visible');
+    const hasFeatured=(resourceCols.results||[]).some(c=>c.name==='featured');
+    const stmts=[];
+    if(!hasCatVisible)stmts.push(env.DB.prepare("ALTER TABLE categories ADD COLUMN is_visible INTEGER NOT NULL DEFAULT 1"));
+    if(!hasFeatured)stmts.push(env.DB.prepare("ALTER TABLE resources ADD COLUMN featured INTEGER NOT NULL DEFAULT 0"));
+    if(stmts.length)await env.DB.batch(stmts);
+    await env.DB.batch([
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_resources_featured ON resources(featured)"),
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_categories_visible ON categories(is_visible)"),
+      env.DB.prepare("UPDATE categories SET is_visible=0 WHERE slug IN ('guides','regulations','recruitment','payroll','leaves','offboarding')"),
+      env.DB.prepare("UPDATE categories SET name='ملفات', icon='📁', sort_order=3 WHERE slug='excel' AND NOT EXISTS (SELECT 1 FROM categories WHERE slug='files')"),
+      env.DB.prepare("UPDATE categories SET slug='files' WHERE name='ملفات' AND slug='excel' AND NOT EXISTS (SELECT 1 FROM categories WHERE slug='files')")
+    ]);
+  })().catch(e=>{schemaReadyPromise=null;throw e});
+  return schemaReadyPromise;
+}
+async function admin(req,env,fn){if(!isAdmin(req,env))return cors(bad("Unauthorized",401));try{await ensureSchema(env);return cors(await fn())}catch(e){return cors(json({error:e.message||"Server error"},500))}}
 
 export default {async fetch(request,env){
   if(request.method==="OPTIONS")return cors(new Response(null,{status:204}));
   const url=new URL(request.url);
   try{
+    await ensureSchema(env);
     if(url.pathname==="/api/categories"&&request.method==="GET"){
       const {results}=await env.DB.prepare(`SELECT c.id,c.name,c.slug,c.icon,c.sort_order,COUNT(r.id) resource_count FROM categories c LEFT JOIN resources r ON r.category_id=c.id AND r.status!='archived' WHERE c.is_visible=1 GROUP BY c.id ORDER BY c.sort_order,c.name`).all();
       return cors(json(results));

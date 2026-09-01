@@ -91,7 +91,11 @@
       <form id="category-form" class="form-grid">
         <input type="hidden" id="category-id">
         <div class="field"><label>اسم القسم</label><input id="category-name" required placeholder="مثال: النماذج"></div>
-        <div class="field"><label>الأيقونة</label><input id="category-icon" value="📄" maxlength="8"></div>
+        <div class="field full"><label>الأيقونة</label>
+          <input id="category-icon" type="hidden" value="📄">
+          <div id="icon-picker" class="icon-picker" aria-label="اختيار أيقونة القسم"></div>
+          <small class="field-hint">اختر أيقونة جاهزة للقسم.</small>
+        </div>
         <div class="field"><label>ترتيب العرض</label><input id="category-order" type="number" value="1"></div>
         <label class="check-row full"><input id="category-visible" type="checkbox" checked> إظهار القسم في الموقع</label>
         <div class="full"><button class="btn btn-primary" type="submit">حفظ القسم</button></div>
@@ -126,7 +130,9 @@ async function toggleResource(id){const r=resources.find(x=>x.id===id);if(!r)ret
 async function archiveResource(id){if(!confirm('أرشفة الملف؟ سيختفي من الموقع ويمكن استعادته لاحقًا.'))return;try{await api(`/api/admin/resources/${id}`,{method:'PATCH',body:JSON.stringify({status:'archived'})});await loadAll()}catch(e){alert(e.message)}}
 async function deleteResource(id){if(!confirm('حذف الملف نهائيًا؟ لا يمكن التراجع عن هذا الإجراء.'))return;try{await api(`/api/admin/resources/${id}`,{method:'DELETE'});await loadAll()}catch(e){alert(e.message)}}
 $('#new-category').onclick=()=>openCategory();$('#close-category').onclick=()=>$('#category-modal').classList.add('hidden');
-function openCategory(id){const c=id?categories.find(x=>x.id===id):null;$('#category-modal-title').textContent=c?'تعديل قسم':'إضافة قسم';$('#category-id').value=c?.id||'';$('#category-name').value=c?.name||'';$('#category-icon').value=c?.icon||'📄';$('#category-order').value=c?.sort_order??(categories.length+1);$('#category-visible').checked=c?!!c.is_visible:true;$('#category-form-message').textContent='';$('#category-modal').classList.remove('hidden')}
+const ICONS=['📄','📝','📁','📂','📋','🗂️','📊','📑','🧾','📌','📎','✉️','📨','📤','📥','🗃️','⭐','🔖','👥','🖊️','🔍','🗒️'];
+function renderIconPicker(selected='📄'){const el=$('#icon-picker');el.innerHTML=ICONS.map((icon,i)=>`<button type=\"button\" class=\"icon-choice ${icon===selected?'selected':''}\" data-icon=\"${icon}\" aria-label=\"${icon}\">${icon}</button>`).join('');el.querySelectorAll('.icon-choice').forEach(b=>b.onclick=()=>{const icon=b.dataset.icon;$('#category-icon').value=icon;el.querySelectorAll('.icon-choice').forEach(x=>x.classList.remove('selected'));b.classList.add('selected')})}
+function openCategory(id){const c=id?categories.find(x=>x.id===id):null;const icon=c?.icon||'📄';$('#category-modal-title').textContent=c?'تعديل قسم':'إضافة قسم';$('#category-id').value=c?.id||'';$('#category-name').value=c?.name||'';$('#category-icon').value=icon;$('#category-order').value=c?.sort_order??(categories.length+1);$('#category-visible').checked=c?!!c.is_visible:true;$('#category-form-message').textContent='';renderIconPicker(icon);$('#category-modal').classList.remove('hidden')}
 $('#category-form').onsubmit=async e=>{e.preventDefault();const id=$('#category-id').value;const body={name:$('#category-name').value,icon:$('#category-icon').value,sort_order:Number($('#category-order').value||0),is_visible:$('#category-visible').checked};try{await api(id?`/api/admin/categories/${id}`:'/api/admin/categories',{method:id?'PATCH':'POST',body:JSON.stringify(body)});$('#category-modal').classList.add('hidden');await loadAll()}catch(err){$('#category-form-message').className='message error';$('#category-form-message').textContent=err.message}};
 async function toggleCategory(id){const c=categories.find(x=>x.id===id);try{await api(`/api/admin/categories/${id}`,{method:'PATCH',body:JSON.stringify({is_visible:!c.is_visible})});await loadAll()}catch(e){alert(e.message)}}
 async function deleteCategory(id){const c=categories.find(x=>x.id===id);if(Number(c.resource_count)>0){alert('لا يمكن حذف قسم يحتوي على ملفات. انقل الملفات إلى قسم آخر أو احذفها أولًا.');return}if(!confirm(`حذف قسم «${c.name}»؟`))return;try{await api(`/api/admin/categories/${id}`,{method:'DELETE'});await loadAll()}catch(e){alert(e.message)}}
