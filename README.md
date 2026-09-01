@@ -33,3 +33,27 @@ npm run deploy
 - إذا كان اسم الملف داخل الرابط واضحًا بامتداد مثل `.pdf` أو `.docx` أو `.xlsx` فسيتم التعرف عليه تلقائيًا.
 - إذا كان الرابط من خدمة لا يظهر اسم الملف في عنوان URL، يبقى اسم الملف الداخلي فارغًا، وهذا لا يمنع فتح/تحميل الملف.
 - روابط الحسابات الاجتماعية ونموذج الاقتراحات يتم إدخالها مرة واحدة من: لوحة الإدارة → روابط الموقع.
+
+
+## تخزين الملفات عبر GitHub Releases
+
+يمكن للموقع رفع الملفات مباشرة إلى GitHub Releases بدل تخزينها في Cloudflare R2.
+
+### إعداد Cloudflare
+
+في Worker → Settings → Variables and Secrets أضف:
+
+- `GITHUB_TOKEN` — **Secret**
+- `GITHUB_OWNER` — Variable = `mohammed-10-f`
+- `GITHUB_REPO` — Variable = `hr-reference-files`
+- `GITHUB_RELEASE_TAG` — Variable = `v1`
+
+يجب أن يكون `GITHUB_TOKEN` من نوع Fine-grained Personal Access Token، وممنوحًا للمستودع `hr-reference-files` مع صلاحية:
+
+`Contents: Read and write`
+
+بعد الحفظ، يستطيع المدير من لوحة HR Reference اختيار ملف من جهازه. Worker ينشئ Release `v1` عند الحاجة، ثم يرفع الملف كـRelease Asset ويحفظ رابط `browser_download_url` في قاعدة البيانات. زر التحميل في الموقع يمر عبر `/api/download/:id` ثم يحوّل المستخدم إلى رابط التنزيل المباشر.
+
+### مهم
+
+`GITHUB_TOKEN` لا يوضع في الكود ولا في `wrangler.toml` ولا في واجهة الموقع. يبقى Secret داخل Cloudflare فقط.

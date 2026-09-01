@@ -44,11 +44,29 @@ async function githubConfig(env){
   const tag=String(env.GITHUB_RELEASE_TAG||await getSetting(env,'github_release_tag')||'v1').trim();
   return {owner,repo,tag,token:String(env.GITHUB_TOKEN||'').trim()};
 }
-async function githubRequest(env,path,options={}){
-  const {token}=await githubConfig(env); if(!token) throw new Error('لم يتم إعداد GITHUB_TOKEN في Cloudflare Secrets.');
-  const r=await fetch('https://api.github.com'+path,{...options,headers:{Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28',Authorization:`Bearer ${token}`,...(options.headers||{})}});
-  const text=await r.text(); let data={}; try{data=text?JSON.parse(text):{}}catch{data={message:text}};
-  if(!r.ok) throw new Error(data.message||`GitHub API ${r.status}`); return data;
+async function githubRequest(env,path,options={},host='https://api.github.com'){
+  const {token}=await githubConfig(env);
+  if(!token) throw new Error('لم يتم إعداد GITHUB_TOKEN في Cloudflare Secrets.');
+  const r=await fetch(host+path,{
+    ...options,
+    headers:{
+      Accept:'application/vnd.github+json',
+      'X-GitHub-Api-Version':'2022-11-28',
+      Authorization:`Bearer ${token}`,
+      ...(options.headers||{})
+    }
+  });
+  const text=await r.text();
+  let data={};
+  if(text){
+    try{data=JSON.parse(text)}
+    catch{data={message:text}}
+  }
+  if(!r.ok){
+    const detail=String(data.message||text||`GitHub API ${r.status}`).trim();
+    throw new Error(`تعذر التواصل مع GitHub (${r.status}): ${detail}`);
+  }
+  return data;
 }
 async function ensureGitHubRelease(env){
   const {owner,repo,tag}=await githubConfig(env); if(!owner||!repo) throw new Error('أكمل إعداد مستودع GitHub: GITHUB_OWNER و GITHUB_REPO.');
@@ -66,11 +84,32 @@ async function uploadToGitHub(env,file){
   const release=await ensureGitHubRelease(env); const {owner,repo}=await githubConfig(env); const name=safeAssetName(file.name); const old=Array.isArray(release.assets)?release.assets.find(a=>a.name===name):null;
   if(old) await githubRequest(env,`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases/assets/${old.id}`,{method:'DELETE'});
   const body=await file.arrayBuffer();
-  const asset=await githubRequest(env,`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases/${release.id}/assets?name=${encodeURIComponent(name)}`,{method:'POST',headers:{'Content-Type':file.type||'application/octet-stream','Content-Length':String(body.byteLength)},body});
+  const asset=await githubRequest(
+    env,
+    `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases/${release.id}/assets?name=${encodeURIComponent(name)}`,
+    {method:'POST',headers:{'Content-Type':file.type||'application/octet-stream','Content-Length':String(body.byteLength)},body},
+    'https://uploads.github.com'
+  );
   return {url:asset.browser_download_url,file_name:asset.name,file_type:file.type||inferFileType(asset.name),size:asset.size,github_asset_id:asset.id};
 }
 
-function parseIds(v){return [...new Set((Array.isArray(v)?v:[v]).map(Number).filter(Number.isInteger).filter(x=>x>0))]}
+function parseIds(v){
+  return [...new Set((Array.isArray(v)?v:[v])
+    .map(Number)
+    .filter(Number.isInteger)
+    .filter(x=>x>0))]
+}
+function parseIdsInput(v){
+  if(Array.isArray(v)) return parseIds(v);
+  const raw=String(v??'').trim();
+  if(!raw) return [];
+  try{
+    const parsed=JSON.parse(raw);
+    return parseIds(parsed);
+  }catch{
+    return parseIds(raw.split(',').map(x=>x.trim()).filter(Boolean));
+  }
+}
 async function syncCategories(env,resourceId,ids){await env.DB.prepare('DELETE FROM resource_categories WHERE resource_id=?').bind(resourceId).run();if(!ids.length)return;await env.DB.batch(ids.map(cid=>env.DB.prepare('INSERT OR IGNORE INTO resource_categories(resource_id,category_id) VALUES(?,?)').bind(resourceId,cid)))}
 function hydrateResources(rows){return (rows||[]).map(r=>({...r,category_ids:r.category_ids?String(r.category_ids).split(',').filter(Boolean).map(Number):[],category_names:r.category_names||''}))}
 
@@ -97,8 +136,8 @@ export default {async fetch(request,env){
   const cm=url.pathname.match(/^\/api\/admin\/categories\/(\d+)$/);if(cm&&request.method==='PATCH')return admin(request,env,async()=>{const id=Number(cm[1]),b=await request.json(),sets=[],vals=[];if(b.name!==undefined){sets.push('name=?');vals.push(String(b.name).trim())}if(b.icon!==undefined){sets.push('icon=?');vals.push(String(b.icon||'▤'))}if(b.sort_order!==undefined){sets.push('sort_order=?');vals.push(Number(b.sort_order)||0)}if(b.is_visible!==undefined){sets.push('is_visible=?');vals.push(b.is_visible?1:0)}if(!sets.length)return bad('لا توجد تغييرات');vals.push(id);await env.DB.prepare(`UPDATE categories SET ${sets.join(',')} WHERE id=?`).bind(...vals).run();return json({ok:true})});if(cm&&request.method==='DELETE')return admin(request,env,async()=>{const id=Number(cm[1]),n=await env.DB.prepare("SELECT COUNT(*) n FROM resource_categories rc JOIN resources r ON r.id=rc.resource_id WHERE rc.category_id=? AND r.status!='archived'").bind(id).first();if(Number(n?.n)>0)return bad('لا يمكن حذف قسم يحتوي على ملفات.');await env.DB.prepare('DELETE FROM resource_categories WHERE category_id=?').bind(id).run();await env.DB.prepare('DELETE FROM categories WHERE id=?').bind(id).run();return json({ok:true})});
   if(url.pathname==='/api/admin/resources'&&request.method==='GET')return admin(request,env,async()=>{const {results}=await env.DB.prepare(`SELECT r.*,GROUP_CONCAT(DISTINCT c.name) category_names,GROUP_CONCAT(DISTINCT c.id) category_ids FROM resources r LEFT JOIN resource_categories rc ON rc.resource_id=r.id LEFT JOIN categories c ON c.id=rc.category_id GROUP BY r.id ORDER BY CASE r.status WHEN 'published' THEN 1 WHEN 'hidden' THEN 2 ELSE 3 END,r.updated_at DESC`).all();return json(hydrateResources(results))});
   if(url.pathname==='/api/admin/github/upload'&&request.method==='POST')return admin(request,env,async()=>{const form=await request.formData(),file=form.get('file');if(!(file instanceof File))return bad('اختر ملفًا أولًا.');if(file.size>2*1024*1024*1024)return bad('حجم الملف يتجاوز 2GB.');return json(await uploadToGitHub(env,file))});
-  if(url.pathname==='/api/admin/resources'&&request.method==='POST')return admin(request,env,async()=>{let b={},uploaded=null;const ct=request.headers.get('content-type')||'';if(ct.includes('multipart/form-data')){const form=await request.formData();const file=form.get('file');b={title:form.get('title'),category_ids:JSON.parse(String(form.get('category_ids')||'[]')),description:form.get('description'),keywords:form.get('keywords'),version:form.get('version'),file_type:form.get('file_type'),featured:String(form.get('featured'))==='true'};if(file instanceof File){if(file.size>2*1024*1024*1024)return bad('حجم الملف يتجاوز 2GB.');uploaded=await uploadToGitHub(env,file);b.file_url=uploaded.url;b.file_name=uploaded.file_name;b.file_type=uploaded.file_type}else b.file_url=form.get('file_url')}else b=await request.json();const title=String(b.title||'').trim(),fileUrl=String(b.file_url||'').trim(),ids=parseIds(b.category_ids||b.category_id);if(!title||!fileUrl)return bad('اسم الملف والملف مطلوبان');if(!ids.length)return bad('اختر قسمًا واحدًا على الأقل');const fileName=String(b.file_name||uploaded?.file_name||inferFileName(fileUrl)),fileType=String((!b.file_type||b.file_type==='auto')?(uploaded?.file_type||inferFileType(fileName)):b.file_type);const r=await env.DB.prepare(`INSERT INTO resources(title,slug,description,category_id,file_url,file_name,file_type,keywords,version,status,featured,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)`).bind(title,slugify(title)+'-'+Date.now(),b.description||'',ids[0],fileUrl,fileName,fileType,b.keywords||'',b.version||'1.0','published',b.featured?1:0).run();await syncCategories(env,r.meta.last_row_id,ids);return json({ok:true,id:r.meta.last_row_id,file_url:fileUrl,file_name:fileName,file_type:fileType},201)});
-  const rm=url.pathname.match(/^\/api\/admin\/resources\/(\d+)$/);if(rm&&request.method==='PATCH')return admin(request,env,async()=>{const id=Number(rm[1]),sets=[],vals=[];let b={},uploaded=null;const ct=request.headers.get('content-type')||'';if(ct.includes('multipart/form-data')){const form=await request.formData();const file=form.get('file');b={title:form.get('title'),category_ids:JSON.parse(String(form.get('category_ids')||'[]')),description:form.get('description'),keywords:form.get('keywords'),version:form.get('version'),file_type:form.get('file_type'),featured:String(form.get('featured'))==='true'};if(file instanceof File){if(file.size>2*1024*1024*1024)return bad('حجم الملف يتجاوز 2GB.');uploaded=await uploadToGitHub(env,file);b.file_url=uploaded.url;b.file_name=uploaded.file_name;b.file_type=uploaded.file_type}}else b=await request.json();const allowed=['title','description','file_url','file_type','keywords','version','status','featured'];for(const k of allowed)if(b[k]!==undefined){sets.push(`${k}=?`);vals.push(k==='featured'?(b[k]?1:0):b[k])}if(b.file_url!==undefined){const n=String(b.file_name||uploaded?.file_name||inferFileName(String(b.file_url)));if(n){sets.push('file_name=?','file_type=?');vals.push(n,String((!b.file_type||b.file_type==='auto')?(uploaded?.file_type||inferFileType(n)):b.file_type))}}const ids=b.category_ids!==undefined?parseIds(b.category_ids):null;if(ids&&!ids.length)return bad('اختر قسمًا واحدًا على الأقل');if(ids){sets.push('category_id=?');vals.push(ids[0])}if(!sets.length&&ids===null)return bad('لا توجد تغييرات');if(sets.length){sets.push('updated_at=CURRENT_TIMESTAMP');vals.push(id);await env.DB.prepare(`UPDATE resources SET ${sets.join(',')} WHERE id=?`).bind(...vals).run()}if(ids)await syncCategories(env,id,ids);return json({ok:true,file_url:uploaded?.url||b.file_url||undefined})});if(rm&&request.method==='DELETE')return admin(request,env,async()=>{const id=Number(rm[1]);await env.DB.prepare('DELETE FROM resource_categories WHERE resource_id=?').bind(id).run();await env.DB.prepare('DELETE FROM resources WHERE id=?').bind(id).run();return json({ok:true})});
+  if(url.pathname==='/api/admin/resources'&&request.method==='POST')return admin(request,env,async()=>{let b={},uploaded=null;const ct=request.headers.get('content-type')||'';if(ct.includes('multipart/form-data')){const form=await request.formData();const file=form.get('file');b={title:form.get('title'),category_ids:parseIdsInput(form.get('category_ids')),description:form.get('description'),keywords:form.get('keywords'),version:form.get('version'),file_type:form.get('file_type'),featured:String(form.get('featured'))==='true'};if(file instanceof File){if(file.size>2*1024*1024*1024)return bad('حجم الملف يتجاوز 2GB.');uploaded=await uploadToGitHub(env,file);b.file_url=uploaded.url;b.file_name=uploaded.file_name;b.file_type=uploaded.file_type}else b.file_url=form.get('file_url')}else b=await request.json();const title=String(b.title||'').trim(),fileUrl=String(b.file_url||'').trim(),ids=parseIds(b.category_ids||b.category_id);if(!title||!fileUrl)return bad('اسم الملف والملف مطلوبان');if(!ids.length)return bad('اختر قسمًا واحدًا على الأقل');const fileName=String(b.file_name||uploaded?.file_name||inferFileName(fileUrl)),fileType=String((!b.file_type||b.file_type==='auto')?(uploaded?.file_type||inferFileType(fileName)):b.file_type);const r=await env.DB.prepare(`INSERT INTO resources(title,slug,description,category_id,file_url,file_name,file_type,keywords,version,status,featured,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)`).bind(title,slugify(title)+'-'+Date.now(),b.description||'',ids[0],fileUrl,fileName,fileType,b.keywords||'',b.version||'1.0','published',b.featured?1:0).run();await syncCategories(env,r.meta.last_row_id,ids);return json({ok:true,id:r.meta.last_row_id,file_url:fileUrl,file_name:fileName,file_type:fileType},201)});
+  const rm=url.pathname.match(/^\/api\/admin\/resources\/(\d+)$/);if(rm&&request.method==='PATCH')return admin(request,env,async()=>{const id=Number(rm[1]),sets=[],vals=[];let b={},uploaded=null;const ct=request.headers.get('content-type')||'';if(ct.includes('multipart/form-data')){const form=await request.formData();const file=form.get('file');b={title:form.get('title'),category_ids:parseIdsInput(form.get('category_ids')),description:form.get('description'),keywords:form.get('keywords'),version:form.get('version'),file_type:form.get('file_type'),featured:String(form.get('featured'))==='true'};if(file instanceof File){if(file.size>2*1024*1024*1024)return bad('حجم الملف يتجاوز 2GB.');uploaded=await uploadToGitHub(env,file);b.file_url=uploaded.url;b.file_name=uploaded.file_name;b.file_type=uploaded.file_type}}else b=await request.json();const allowed=['title','description','file_url','file_type','keywords','version','status','featured'];for(const k of allowed)if(b[k]!==undefined){sets.push(`${k}=?`);vals.push(k==='featured'?(b[k]?1:0):b[k])}if(b.file_url!==undefined){const n=String(b.file_name||uploaded?.file_name||inferFileName(String(b.file_url)));if(n){sets.push('file_name=?','file_type=?');vals.push(n,String((!b.file_type||b.file_type==='auto')?(uploaded?.file_type||inferFileType(n)):b.file_type))}}const ids=b.category_ids!==undefined?parseIds(b.category_ids):null;if(ids&&!ids.length)return bad('اختر قسمًا واحدًا على الأقل');if(ids){sets.push('category_id=?');vals.push(ids[0])}if(!sets.length&&ids===null)return bad('لا توجد تغييرات');if(sets.length){sets.push('updated_at=CURRENT_TIMESTAMP');vals.push(id);await env.DB.prepare(`UPDATE resources SET ${sets.join(',')} WHERE id=?`).bind(...vals).run()}if(ids)await syncCategories(env,id,ids);return json({ok:true,file_url:uploaded?.url||b.file_url||undefined})});if(rm&&request.method==='DELETE')return admin(request,env,async()=>{const id=Number(rm[1]);await env.DB.prepare('DELETE FROM resource_categories WHERE resource_id=?').bind(id).run();await env.DB.prepare('DELETE FROM resources WHERE id=?').bind(id).run();return json({ok:true})});
   return env.ASSETS.fetch(request);
  }catch(e){return cors(json({error:'Server error',message:e.message},500))}
 }};
