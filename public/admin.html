@@ -2,14 +2,14 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#012152"><title>HR Kit — إدارة المحتوى</title>
+  <meta name="theme-color" content="#012152"><title>HR Reference — إدارة المحتوى</title>
   <link rel="icon" type="image/png" href="/assets/logo.png"><link rel="stylesheet" href="/styles.css">
 </head>
 <body class="admin-body">
   <div id="login-screen" class="login-screen">
     <div class="login-card">
       <img src="/assets/logo.png" alt="محمد الروقي HR" class="login-logo">
-      <span class="login-kicker">HR KIT · ADMIN</span><h1>إدارة المرجع</h1>
+      <span class="login-kicker">HR REFERENCE · ADMIN</span><h1>إدارة المرجع</h1>
       <p>أدخل كلمة المرور للوصول إلى إدارة الملفات والأقسام والإعدادات.</p>
       <div class="field"><label for="admin-password">كلمة المرور</label><input id="admin-password" type="password" autocomplete="current-password" placeholder="كلمة المرور"></div>
       <button id="login-btn" class="btn btn-primary btn-large" type="button">دخول إلى الإدارة</button><div id="login-error" class="login-error"></div>
@@ -18,55 +18,55 @@
 
   <div id="admin-app" class="admin-shell hidden">
     <header class="admin-topbar"><div class="container admin-nav-inner">
-      <a href="/" class="admin-brand"><img src="/assets/logo.png" alt="محمد الروقي HR"><span><strong>إدارة HR Kit</strong><small>مرجع موظف الموارد البشرية</small></span></a>
+      <a href="/" class="admin-brand"><img src="/assets/logo.png" alt="محمد الروقي HR"><span><strong>إدارة HR Reference</strong><small>مرجع موظف الموارد البشرية</small></span></a>
       <div class="admin-top-actions"><a class="btn" href="/">عرض الموقع</a><button id="logout" class="btn" type="button">خروج</button></div>
     </div></header>
 
     <main class="admin-main container">
-      <div class="admin-page-head"><div><span class="page-kicker">CONTROL CENTER</span><h1>لوحة الإدارة</h1><p>كل ما تحتاجه لإدارة المرجع من مكان واحد.</p></div></div>
+      <div class="admin-page-head"><div><span class="page-kicker">HR REFERENCE</span><h1>مركز إدارة المرجع</h1><p>أضف المحتوى، رتّبه، وأبقه محدثًا من مكان واحد.</p></div></div>
       <section class="dashboard-stats">
-        <div class="stat-card"><span class="stat-icon">▤</span><div><small>الملفات</small><strong id="stat-resources">—</strong></div></div>
-        <div class="stat-card"><span class="stat-icon">◫</span><div><small>الأقسام الظاهرة</small><strong id="stat-categories">—</strong></div></div>
-        <div class="stat-card"><span class="stat-icon">↓</span><div><small>إجمالي التحميلات</small><strong id="stat-downloads">—</strong></div></div>
+        <div class="stat-card"><span class="stat-icon">▤</span><div><small>إجمالي المحتوى</small><strong id="stat-resources">—</strong></div></div>
+        <div class="stat-card"><span class="stat-icon">◫</span><div><small>الأقسام النشطة</small><strong id="stat-categories">—</strong></div></div>
+        <div class="stat-card"><span class="stat-icon">↓</span><div><small>إجمالي مرات الفتح</small><strong id="stat-downloads">—</strong></div></div>
       </section>
 
       <section class="admin-section-card quick-actions">
-        <div><span class="page-kicker">QUICK ACTIONS</span><h2>ابدأ من هنا</h2></div>
-        <div class="quick-action-grid"><button class="quick-action" id="quick-add-resource"><span>＋</span><div><strong>إضافة ملف</strong><small>نموذج، خطاب أو ملف HR</small></div></button><button class="quick-action" id="quick-add-category"><span>＋</span><div><strong>إضافة قسم</strong><small>إنشاء نوع محتوى جديد</small></div></button><button class="quick-action" id="quick-settings"><span>⚙</span><div><strong>إعدادات الموقع</strong><small>حساباتك وروابط الاقتراحات</small></div></button><button class="quick-action" id="quick-password"><span>🔒</span><div><strong>تغيير كلمة المرور</strong><small>تحديث كلمة مرور الإدارة</small></div></button></div>
+        <div><span class="page-kicker">اختصارات</span><h2>ماذا تريد أن تفعل؟</h2></div>
+        <div class="quick-action-grid"><button class="quick-action" id="quick-add-resource"><span>＋</span><div><strong>إضافة محتوى</strong><small>نموذج، خطاب أو ملف جديد</small></div></button><button class="quick-action" id="quick-add-category"><span>＋</span><div><strong>إضافة قسم</strong><small>أنشئ تصنيفًا جديدًا عند الحاجة</small></div></button><button class="quick-action" id="quick-settings"><span>⚙</span><div><strong>روابط الموقع</strong><small>X وLinkedIn ونموذج الاقتراحات</small></div></button><button class="quick-action" id="quick-password"><span>🔒</span><div><strong>أمان الحساب</strong><small>تغيير كلمة مرور الإدارة</small></div></button></div>
       </section>
 
       <div class="admin-layout">
         <div class="admin-main-column">
           <section class="admin-section-card" id="resource-editor">
-            <div class="section-title-row"><div><span class="page-kicker">CONTENT</span><h2 id="resource-form-title">إضافة ملف</h2><p>أدخل المعلومات التي يحتاجها المستخدم للوصول إلى الملف بسرعة.</p></div><button class="btn hidden" id="cancel-edit" type="button">إلغاء التعديل</button></div>
+            <div class="section-title-row"><div><span class="page-kicker">المحتوى</span><h2 id="resource-form-title">إضافة محتوى</h2><p>أدخل الحد الأدنى من المعلومات. الباقي يتولاه النظام.</p></div><button class="btn hidden" id="cancel-edit" type="button">إلغاء التعديل</button></div>
             <form id="resource-form" class="form-grid">
               <input type="hidden" id="resource-id">
-              <div class="field"><label>اسم العرض</label><input id="resource-title" required placeholder="مثال: نموذج إخلاء طرف"><small>هذا الاسم سيظهر للمستخدم داخل الموقع.</small></div>
+              <div class="field"><label>عنوان المحتوى</label><input id="resource-title" required placeholder="مثال: نموذج إخلاء طرف"><small>هذا الاسم سيظهر للمستخدم داخل الموقع.</small></div>
               <div class="field"><label>القسم</label><select id="resource-category" required></select></div>
-              <div class="field full"><label>رابط الملف</label><input id="resource-url" required type="url" placeholder="ضع رابط الملف هنا"><small>لا تحتاج لإدخال نوع الملف أو اسمه الأصلي؛ النظام يحاول التعرف عليه تلقائيًا من الرابط.</small></div>
+              <div class="field full"><label>رابط المحتوى</label><input id="resource-url" required type="url" placeholder="ضع رابط الملف هنا"><small>ضع رابط الملف المباشر. لا تحتاج لإدخال نوع الملف أو اسم الملف الأصلي.</small></div>
               <div class="field full"><label>وصف مختصر <em>اختياري</em></label><textarea id="resource-description" placeholder="مثال: النموذج المستخدم عند انتهاء علاقة الموظف بالمنشأة."></textarea></div>
-              <div class="field"><label>الكلمات المفتاحية <em>اختياري</em></label><input id="resource-keywords" placeholder="إخلاء طرف، مخالصة، إنهاء خدمة"></div>
-              <div class="field"><label>الإصدار</label><input id="resource-version" value="1.0" placeholder="1.0"></div>
-              <label class="check-row full featured-check"><input type="checkbox" id="resource-featured"><span><strong>تمييز الملف</strong><small>يظهر في قسم «الأكثر استخدامًا» في الصفحة الرئيسية.</small></span></label>
-              <div class="form-actions full"><button class="btn btn-primary btn-large" type="submit" id="save-resource">حفظ الملف</button></div>
+              <div class="field"><label>كلمات تساعد في البحث <em>اختياري</em></label><input id="resource-keywords" placeholder="إخلاء طرف، مخالصة، إنهاء خدمة"></div>
+              <div class="field"><label>الإصدار <em>اختياري</em></label><input id="resource-version" value="1.0" placeholder="1.0"></div>
+              <label class="check-row full featured-check"><input type="checkbox" id="resource-featured"><span><strong>إضافة إلى مختارات HR</strong><small>يظهر في القسم المميز أعلى الصفحة الرئيسية.</small></span></label>
+              <div class="form-actions full"><button class="btn btn-primary btn-large" type="submit" id="save-resource">نشر المحتوى</button></div>
             </form><div id="resource-message" class="message"></div>
           </section>
 
           <section class="admin-section-card" id="resource-library">
-            <div class="section-title-row"><div><span class="page-kicker">LIBRARY</span><h2>مكتبة الملفات</h2><p>ابحث وعدّل حالة أي ملف من هنا.</p></div></div>
-            <div class="toolbar"><input id="admin-search" placeholder="ابحث باسم الملف أو الكلمات المفتاحية..."><select id="admin-status"><option value="">كل الحالات</option><option value="published">منشور</option><option value="hidden">مخفي</option><option value="archived">مؤرشف</option></select><select id="admin-category-filter"><option value="">كل الأقسام</option></select></div>
+            <div class="section-title-row"><div><span class="page-kicker">المحتوى المنشور</span><h2>مكتبة المرجع</h2><p>ابحث عن أي محتوى وعدّل حالته أو معلوماته.</p></div></div>
+            <div class="toolbar"><input id="admin-search" placeholder="ابحث بالعنوان أو الكلمات المفتاحية..."><select id="admin-status"><option value="">كل الحالات</option><option value="published">منشور</option><option value="hidden">مخفي</option><option value="archived">مؤرشف</option></select><select id="admin-category-filter"><option value="">كل الأقسام</option></select></div>
             <div id="resource-list" class="resource-list"></div><div id="list-message" class="message"></div>
           </section>
         </div>
 
         <aside class="admin-side-column">
           <section class="admin-section-card" id="categories-editor">
-            <div class="section-title-row"><div><span class="page-kicker">CATEGORIES</span><h2>الأقسام</h2><p>تحكم في الأنواع الظاهرة للمستخدم.</p></div><button class="btn btn-primary" id="new-category" type="button">＋ إضافة</button></div>
+            <div class="section-title-row"><div><span class="page-kicker">التنظيم</span><h2>أقسام المرجع</h2><p>رتّب أنواع المحتوى الظاهرة في الصفحة الرئيسية.</p></div><button class="btn btn-primary" id="new-category" type="button">＋ إضافة</button></div>
             <div id="category-list" class="category-admin-list"></div><div id="category-message" class="message"></div>
           </section>
 
           <section class="admin-section-card" id="site-settings">
-            <div class="section-title-row"><div><span class="page-kicker">BRANDING & LINKS</span><h2>روابط الموقع</h2><p>تظهر تلقائيًا في الهيدر والفوتر.</p></div></div>
+            <div class="section-title-row"><div><span class="page-kicker">التواصل</span><h2>روابط الموقع</h2><p>تظهر تلقائيًا في الهيدر والفوتر.</p></div></div>
             <form id="settings-form" class="settings-form">
               <div class="field"><label>حساب X / Twitter</label><input id="setting-x" type="url" placeholder="https://x.com/yourusername"></div>
               <div class="field"><label>حساب LinkedIn</label><input id="setting-linkedin" type="url" placeholder="https://www.linkedin.com/in/yourusername"></div>
@@ -76,8 +76,8 @@
           </section>
 
           <section class="admin-section-card security-card" id="password-settings">
-            <div class="section-title-row"><div><span class="page-kicker">SECURITY</span><h2>كلمة المرور</h2><p>كلمة المرور الافتراضية عند أول تشغيل هي <strong>1234</strong>.</p></div></div>
-            <form id="password-form" class="settings-form"><div class="field"><label>كلمة المرور الحالية</label><input id="old-password" type="password" required></div><div class="field"><label>كلمة المرور الجديدة</label><input id="new-password" type="password" minlength="4" required></div><div class="field"><label>تأكيد كلمة المرور</label><input id="confirm-password" type="password" minlength="4" required></div><button class="btn btn-primary" type="submit">إعادة تعيين كلمة المرور</button><div id="password-message" class="message"></div></form>
+            <div class="section-title-row"><div><span class="page-kicker">الأمان</span><h2>كلمة مرور الإدارة</h2><p>كلمة المرور الافتراضية عند أول تشغيل هي <strong>1234</strong>.</p></div></div>
+            <form id="password-form" class="settings-form"><div class="field"><label>كلمة المرور الحالية</label><input id="old-password" type="password" required></div><div class="field"><label>كلمة المرور الجديدة</label><input id="new-password" type="password" minlength="4" required></div><div class="field"><label>تأكيد كلمة المرور</label><input id="confirm-password" type="password" minlength="4" required></div><button class="btn btn-primary" type="submit">تغيير كلمة المرور</button><div id="password-message" class="message"></div></form>
           </section>
         </aside>
       </div>
