@@ -23,22 +23,22 @@
     </div></header>
 
     <main class="admin-main container">
-      <div class="admin-page-head"><div><span class="page-kicker">HR REFERENCE</span><h1>مركز إدارة المرجع</h1><p>أضف المحتوى، رتّبه، وأبقه محدثًا من مكان واحد.</p></div></div>
+      <div class="admin-page-head"><div><span class="page-kicker">HR REFERENCE</span><h1>إدارة المرجع</h1><p>كل ما تحتاجه لإدارة النماذج والخطابات والملفات من مكان واحد.</p></div></div>
       <section class="dashboard-stats">
-        <div class="stat-card"><span class="stat-icon">▤</span><div><small>إجمالي المحتوى</small><strong id="stat-resources">—</strong></div></div>
+        <div class="stat-card"><span class="stat-icon">▤</span><div><small>إجمالي الملفات</small><strong id="stat-resources">—</strong></div></div>
         <div class="stat-card"><span class="stat-icon">◫</span><div><small>الأقسام النشطة</small><strong id="stat-categories">—</strong></div></div>
-        <div class="stat-card"><span class="stat-icon">↓</span><div><small>إجمالي مرات الفتح</small><strong id="stat-downloads">—</strong></div></div>
+        <div class="stat-card"><span class="stat-icon">↓</span><div><small>إجمالي التحميلات</small><strong id="stat-downloads">—</strong></div></div>
       </section>
 
       <section class="admin-section-card quick-actions">
-        <div><span class="page-kicker">اختصارات</span><h2>ماذا تريد أن تفعل؟</h2></div>
-        <div class="quick-action-grid"><button class="quick-action" id="quick-add-resource"><span>＋</span><div><strong>إضافة محتوى</strong><small>نموذج، خطاب أو ملف جديد</small></div></button><button class="quick-action" id="quick-add-category"><span>＋</span><div><strong>إضافة قسم</strong><small>أنشئ تصنيفًا جديدًا عند الحاجة</small></div></button><button class="quick-action" id="quick-settings"><span>⚙</span><div><strong>روابط الموقع</strong><small>X وLinkedIn ونموذج الاقتراحات</small></div></button><button class="quick-action" id="quick-password"><span>🔒</span><div><strong>أمان الحساب</strong><small>تغيير كلمة مرور الإدارة</small></div></button></div>
+        <div><span class="page-kicker">اختصارات</span><h2>إجراءات سريعة</h2></div>
+        <div class="quick-action-grid"><button class="quick-action" id="quick-add-resource"><span>＋</span><div><strong>إضافة ملف</strong><small>أضف نموذجًا أو خطابًا أو ملفًا</small></div></button><button class="quick-action" id="quick-add-category"><span>＋</span><div><strong>إضافة قسم</strong><small>أضف نوعًا جديدًا عند الحاجة</small></div></button><button class="quick-action" id="quick-settings"><span>⚙</span><div><strong>روابط الموقع</strong><small>X وLinkedIn ونموذج الاقتراحات</small></div></button><button class="quick-action" id="quick-password"><span>🔒</span><div><strong>أمان الحساب</strong><small>تغيير كلمة مرور الإدارة</small></div></button></div>
       </section>
 
       <div class="admin-layout">
         <div class="admin-main-column">
           <section class="admin-section-card" id="resource-editor">
-            <div class="section-title-row"><div><span class="page-kicker">المحتوى</span><h2 id="resource-form-title">إضافة محتوى</h2><p>أدخل الحد الأدنى من المعلومات. الباقي يتولاه النظام.</p></div><button class="btn hidden" id="cancel-edit" type="button">إلغاء التعديل</button></div>
+            <div class="section-title-row"><div><span class="page-kicker">المحتوى</span><h2 id="resource-form-title">إضافة ملف</h2><p>أضف المعلومات الأساسية فقط، واترك التفاصيل غير الضرورية للنظام.</p></div><button class="btn hidden" id="cancel-edit" type="button">إلغاء التعديل</button></div>
             <form id="resource-form" class="form-grid">
               <input type="hidden" id="resource-id">
               <div class="field"><label>عنوان المحتوى</label><input id="resource-title" required placeholder="مثال: نموذج إخلاء طرف"><small>هذا الاسم سيظهر للمستخدم داخل الموقع.</small></div>
@@ -53,7 +53,7 @@
           </section>
 
           <section class="admin-section-card" id="resource-library">
-            <div class="section-title-row"><div><span class="page-kicker">المحتوى المنشور</span><h2>مكتبة المرجع</h2><p>ابحث عن أي محتوى وعدّل حالته أو معلوماته.</p></div></div>
+            <div class="section-title-row"><div><span class="page-kicker">المكتبة</span><h2>ملفات المرجع</h2><p>ابحث، عدّل، أخفِ أو أرشف أي ملف بسهولة.</p></div></div>
             <div class="toolbar"><input id="admin-search" placeholder="ابحث بالعنوان أو الكلمات المفتاحية..."><select id="admin-status"><option value="">كل الحالات</option><option value="published">منشور</option><option value="hidden">مخفي</option><option value="archived">مؤرشف</option></select><select id="admin-category-filter"><option value="">كل الأقسام</option></select></div>
             <div id="resource-list" class="resource-list"></div><div id="list-message" class="message"></div>
           </section>
@@ -61,12 +61,12 @@
 
         <aside class="admin-side-column">
           <section class="admin-section-card" id="categories-editor">
-            <div class="section-title-row"><div><span class="page-kicker">التنظيم</span><h2>أقسام المرجع</h2><p>رتّب أنواع المحتوى الظاهرة في الصفحة الرئيسية.</p></div><button class="btn btn-primary" id="new-category" type="button">＋ إضافة</button></div>
+            <div class="section-title-row"><div><span class="page-kicker">التنظيم</span><h2>أقسام المرجع</h2><p>تحكم في الأقسام الظاهرة وترتيبها في الصفحة الرئيسية.</p></div><button class="btn btn-primary" id="new-category" type="button">＋ إضافة</button></div>
             <div id="category-list" class="category-admin-list"></div><div id="category-message" class="message"></div>
           </section>
 
           <section class="admin-section-card" id="site-settings">
-            <div class="section-title-row"><div><span class="page-kicker">التواصل</span><h2>روابط الموقع</h2><p>تظهر تلقائيًا في الهيدر والفوتر.</p></div></div>
+            <div class="section-title-row"><div><span class="page-kicker">الموقع</span><h2>روابط الموقع</h2><p>تظهر تلقائيًا في الهيدر والفوتر.</p></div></div>
             <form id="settings-form" class="settings-form">
               <div class="field"><label>حساب X / Twitter</label><input id="setting-x" type="url" placeholder="https://x.com/yourusername"></div>
               <div class="field"><label>حساب LinkedIn</label><input id="setting-linkedin" type="url" placeholder="https://www.linkedin.com/in/yourusername"></div>
@@ -76,7 +76,7 @@
           </section>
 
           <section class="admin-section-card security-card" id="password-settings">
-            <div class="section-title-row"><div><span class="page-kicker">الأمان</span><h2>كلمة مرور الإدارة</h2><p>كلمة المرور الافتراضية عند أول تشغيل هي <strong>1234</strong>.</p></div></div>
+            <div class="section-title-row"><div><span class="page-kicker">الحساب</span><h2>كلمة مرور الإدارة</h2><p>كلمة المرور الافتراضية عند أول تشغيل هي <strong>1234</strong>.</p></div></div>
             <form id="password-form" class="settings-form"><div class="field"><label>كلمة المرور الحالية</label><input id="old-password" type="password" required></div><div class="field"><label>كلمة المرور الجديدة</label><input id="new-password" type="password" minlength="4" required></div><div class="field"><label>تأكيد كلمة المرور</label><input id="confirm-password" type="password" minlength="4" required></div><button class="btn btn-primary" type="submit">تغيير كلمة المرور</button><div id="password-message" class="message"></div></form>
           </section>
         </aside>
@@ -106,7 +106,7 @@ function resourceType(r){const n=(r.file_name||'').toLowerCase(),t=(r.file_type|
 function renderResources(){const q=$('#admin-search').value.trim().toLowerCase(),st=$('#admin-status').value,cat=$('#admin-category-filter').value;const list=resources.filter(r=>(!q||[r.title,r.description,r.keywords,r.file_name].join(' ').toLowerCase().includes(q))&&(!st||r.status===st)&&(!cat||String(r.category_id)===String(cat)));$('#resource-list').innerHTML=list.map(r=>`<div class="admin-resource"><div class="mini-icon">${resourceType(r)}</div><div class="admin-resource-main"><strong>${esc(r.title)}</strong><small>${esc(r.category_name||'عام')} · v${esc(r.version||'1.0')} · ${Number(r.downloads||0)} تحميل ${r.featured?'· ★ مميز':''}</small></div><span class="status-pill status-${esc(r.status)}">${statusLabel(r.status)}</span><div class="resource-actions"><button class="icon-btn" data-edit="${r.id}">تعديل</button><button class="icon-btn" data-toggle="${r.id}">${r.status==='published'?'إخفاء':r.status==='hidden'?'نشر':'استعادة'}</button>${r.status!=='archived'?`<button class="icon-btn" data-archive="${r.id}">أرشفة</button>`:''}<button class="icon-btn danger" data-delete="${r.id}">حذف</button></div></div>`).join('')||'<div class="empty"><strong>لا توجد ملفات مطابقة</strong></div>';document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editResource(+b.dataset.edit));document.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=()=>toggleResource(+b.dataset.toggle));document.querySelectorAll('[data-archive]').forEach(b=>b.onclick=()=>archiveResource(+b.dataset.archive));document.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>deleteResource(+b.dataset.delete))}
 $('#admin-search').oninput=renderResources;$('#admin-status').onchange=renderResources;$('#admin-category-filter').onchange=renderResources;
 $('#resource-form').onsubmit=async e=>{e.preventDefault();const id=$('#resource-id').value,body={title:$('#resource-title').value,category_id:$('#resource-category').value,description:$('#resource-description').value,keywords:$('#resource-keywords').value,version:$('#resource-version').value,file_url:$('#resource-url').value,featured:$('#resource-featured').checked};$('#resource-message').className='message';$('#resource-message').textContent='جاري الحفظ...';try{await api(id?`/api/admin/resources/${id}`:'/api/admin/resources',{method:id?'PATCH':'POST',body:JSON.stringify(body)});$('#resource-message').classList.add('success');$('#resource-message').textContent=id?'تم تحديث الملف.':'تمت إضافة الملف.';resetResourceForm();await loadAll()}catch(err){$('#resource-message').classList.add('error');$('#resource-message').textContent=err.message}};
-function resetResourceForm(){$('#resource-form').reset();$('#resource-id').value='';$('#resource-version').value='1.0';$('#resource-form-title').textContent='إضافة ملف';$('#save-resource').textContent='حفظ الملف';$('#cancel-edit').classList.add('hidden');$('#resource-featured').checked=false;window.scrollTo({top:0,behavior:'smooth'})}
+function resetResourceForm(){$('#resource-form').reset();$('#resource-id').value='';$('#resource-version').value='1.0';$('#resource-form-title').textContent='إضافة ملف';$('#save-resource').textContent='نشر الملف';$('#cancel-edit').classList.add('hidden');$('#resource-featured').checked=false;window.scrollTo({top:0,behavior:'smooth'})}
 $('#cancel-edit').onclick=resetResourceForm;function editResource(id){const r=resources.find(x=>x.id===id);if(!r)return;$('#resource-id').value=r.id;$('#resource-title').value=r.title;$('#resource-category').value=r.category_id||'';$('#resource-description').value=r.description||'';$('#resource-keywords').value=r.keywords||'';$('#resource-version').value=r.version||'1.0';$('#resource-url').value=r.file_url||'';$('#resource-featured').checked=!!r.featured;$('#resource-form-title').textContent='تعديل الملف';$('#save-resource').textContent='حفظ التعديلات';$('#cancel-edit').classList.remove('hidden');$('#resource-editor').scrollIntoView({behavior:'smooth',block:'start'})}
 async function toggleResource(id){const r=resources.find(x=>x.id===id);if(!r)return;const next=r.status==='published'?'hidden':'published';try{await api(`/api/admin/resources/${id}`,{method:'PATCH',body:JSON.stringify({status:next})});await loadAll()}catch(e){alert(e.message)}}
 async function archiveResource(id){if(!confirm('أرشفة الملف؟ سيختفي من الموقع ويمكن استعادته لاحقًا.'))return;try{await api(`/api/admin/resources/${id}`,{method:'PATCH',body:JSON.stringify({status:'archived'})});await loadAll()}catch(e){alert(e.message)}}
