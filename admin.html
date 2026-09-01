@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#012152"><title>HR Reference — إدارة المحتوى</title>
+  <link rel="icon" type="image/png" href="/assets/logo.png"><link rel="stylesheet" href="/styles.css">
+</head>
+<body class="admin-body">
+  <div id="login-screen" class="login-screen">
+    <div class="login-card">
+      <img src="/assets/logo.png" alt="محمد الروقي HR" class="login-logo">
+      <span class="login-kicker">HR REFERENCE · ADMIN</span><h1>إدارة المرجع</h1>
+      <p>أدخل كلمة المرور للوصول إلى إدارة الملفات والأقسام والإعدادات.</p>
+      <div class="field"><label for="admin-password">كلمة المرور</label><input id="admin-password" type="password" autocomplete="current-password" placeholder="كلمة المرور"></div>
+      <button id="login-btn" class="btn btn-primary btn-large" type="button">دخول إلى الإدارة</button><div id="login-error" class="login-error"></div>
+    </div>
+  </div>
+
+  <div id="admin-app" class="admin-shell hidden">
+    <header class="admin-topbar"><div class="container admin-nav-inner">
+      <a href="/" class="admin-brand"><img src="/assets/logo.png" alt="محمد الروقي HR"><span><strong>إدارة HR Reference</strong><small>مرجع موظف الموارد البشرية</small></span></a>
+      <div class="admin-top-actions"><a class="btn" href="/">عرض الموقع</a><button id="logout" class="btn" type="button">خروج</button></div>
+    </div></header>
+
+    <main class="admin-main container">
+      <div class="admin-page-head"><div><span class="page-kicker">HR REFERENCE</span><h1>إدارة المرجع</h1><p>كل ما تحتاجه لإدارة النماذج والخطابات والملفات من مكان واحد.</p></div></div>
+      <section class="dashboard-stats">
+        <div class="stat-card"><span class="stat-icon">▤</span><div><small>إجمالي الملفات</small><strong id="stat-resources">—</strong></div></div>
+        <div class="stat-card"><span class="stat-icon">◫</span><div><small>الأقسام النشطة</small><strong id="stat-categories">—</strong></div></div>
+        <div class="stat-card"><span class="stat-icon">↓</span><div><small>إجمالي التحميلات</small><strong id="stat-downloads">—</strong></div></div>
+      </section>
+
+      <section class="admin-section-card quick-actions">
+        <div><span class="page-kicker">اختصارات</span><h2>إجراءات سريعة</h2></div>
+        <div class="quick-action-grid"><button class="quick-action" id="quick-add-resource"><span>＋</span><div><strong>إضافة ملف</strong><small>أضف نموذجًا أو خطابًا أو ملفًا</small></div></button><button class="quick-action" id="quick-add-category"><span>＋</span><div><strong>إضافة قسم</strong><small>أضف نوعًا جديدًا عند الحاجة</small></div></button><button class="quick-action" id="quick-settings"><span>⚙</span><div><strong>روابط الموقع</strong><small>X وLinkedIn ونموذج الاقتراحات</small></div></button><button class="quick-action" id="quick-password"><span>🔒</span><div><strong>أمان الحساب</strong><small>تغيير كلمة مرور الإدارة</small></div></button></div>
+      </section>
+
+      <div class="admin-layout">
+        <div class="admin-main-column">
+          <section class="admin-section-card" id="resource-editor">
+            <div class="section-title-row"><div><span class="page-kicker">المحتوى</span><h2 id="resource-form-title">إضافة ملف</h2><p>أضف المعلومات الأساسية فقط، واترك التفاصيل غير الضرورية للنظام.</p></div><button class="btn hidden" id="cancel-edit" type="button">إلغاء التعديل</button></div>
+            <form id="resource-form" class="form-grid">
+              <input type="hidden" id="resource-id">
+              <div class="field"><label>عنوان المحتوى</label><input id="resource-title" required placeholder="مثال: نموذج إخلاء طرف"><small>هذا الاسم سيظهر للمستخدم داخل الموقع.</small></div>
+              <div class="field"><label>القسم</label><select id="resource-category" required></select></div>
+              <div class="field full"><label>رابط المحتوى</label><input id="resource-url" required type="url" placeholder="ضع رابط الملف هنا"><small>ضع رابط الملف المباشر. لا تحتاج لإدخال نوع الملف أو اسم الملف الأصلي.</small></div>
+              <div class="field full"><label>وصف مختصر <em>اختياري</em></label><textarea id="resource-description" placeholder="مثال: النموذج المستخدم عند انتهاء علاقة الموظف بالمنشأة."></textarea></div>
+              <div class="field"><label>كلمات تساعد في البحث <em>اختياري</em></label><input id="resource-keywords" placeholder="إخلاء طرف، مخالصة، إنهاء خدمة"></div>
+              <div class="field"><label>الإصدار <em>اختياري</em></label><input id="resource-version" value="1.0" placeholder="1.0"></div>
+              <label class="check-row full featured-check"><input type="checkbox" id="resource-featured"><span><strong>إضافة إلى مختارات HR</strong><small>يظهر في القسم المميز أعلى الصفحة الرئيسية.</small></span></label>
+              <div class="form-actions full"><button class="btn btn-primary btn-large" type="submit" id="save-resource">نشر المحتوى</button></div>
+            </form><div id="resource-message" class="message"></div>
+          </section>
+
+          <section class="admin-section-card" id="resource-library">
+            <div class="section-title-row"><div><span class="page-kicker">المكتبة</span><h2>ملفات المرجع</h2><p>ابحث، عدّل، أخفِ أو أرشف أي ملف بسهولة.</p></div></div>
+            <div class="toolbar"><input id="admin-search" placeholder="ابحث بالعنوان أو الكلمات المفتاحية..."><select id="admin-status"><option value="">كل الحالات</option><option value="published">منشور</option><option value="hidden">مخفي</option><option value="archived">مؤرشف</option></select><select id="admin-category-filter"><option value="">كل الأقسام</option></select></div>
+            <div id="resource-list" class="resource-list"></div><div id="list-message" class="message"></div>
+          </section>
+        </div>
+
+        <aside class="admin-side-column">
+          <section class="admin-section-card" id="categories-editor">
+            <div class="section-title-row"><div><span class="page-kicker">التنظيم</span><h2>أقسام المرجع</h2><p>تحكم في الأقسام الظاهرة وترتيبها في الصفحة الرئيسية.</p></div><button class="btn btn-primary" id="new-category" type="button">＋ إضافة</button></div>
+            <div id="category-list" class="category-admin-list"></div><div id="category-message" class="message"></div>
+          </section>
+
+          <section class="admin-section-card" id="site-settings">
+            <div class="section-title-row"><div><span class="page-kicker">الموقع</span><h2>روابط الموقع</h2><p>تظهر تلقائيًا في الهيدر والفوتر.</p></div></div>
+            <form id="settings-form" class="settings-form">
+              <div class="field"><label>حساب X / Twitter</label><input id="setting-x" type="url" placeholder="https://x.com/yourusername"></div>
+              <div class="field"><label>حساب LinkedIn</label><input id="setting-linkedin" type="url" placeholder="https://www.linkedin.com/in/yourusername"></div>
+              <div class="field"><label>نموذج الاقتراحات</label><input id="setting-suggestion" type="url" placeholder="رابط Microsoft Forms / Google Forms"></div>
+              <button class="btn btn-primary" type="submit">حفظ الروابط</button><div id="settings-message" class="message"></div>
+            </form>
+          </section>
+
+          <section class="admin-section-card security-card" id="password-settings">
+            <div class="section-title-row"><div><span class="page-kicker">الحساب</span><h2>كلمة مرور الإدارة</h2><p>كلمة المرور الافتراضية عند أول تشغيل هي <strong>1234</strong>.</p></div></div>
+            <form id="password-form" class="settings-form"><div class="field"><label>كلمة المرور الحالية</label><input id="old-password" type="password" required></div><div class="field"><label>كلمة المرور الجديدة</label><input id="new-password" type="password" minlength="4" required></div><div class="field"><label>تأكيد كلمة المرور</label><input id="confirm-password" type="password" minlength="4" required></div><button class="btn btn-primary" type="submit">تغيير كلمة المرور</button><div id="password-message" class="message"></div></form>
+          </section>
+        </aside>
+      </div>
+    </main>
+  </div>
+
+  <div id="category-modal" class="modal hidden"><div class="modal-card"><div class="modal-head"><div><span class="page-kicker">CATEGORY</span><h2 id="category-modal-title">إضافة قسم</h2></div><button class="close" id="close-category" type="button">×</button></div>
+    <form id="category-form" class="form-grid"><input type="hidden" id="category-id"><div class="field full"><label>اسم القسم</label><input id="category-name" required placeholder="مثال: النماذج"></div><div class="field full"><label>الأيقونة</label><input id="category-icon" type="hidden" value="📄"><div id="icon-picker" class="icon-picker"></div><small class="field-hint">اختر من الأيقونات الجاهزة.</small></div><div class="field"><label>ترتيب العرض</label><input id="category-order" type="number" value="1"></div><label class="check-row"><input id="category-visible" type="checkbox" checked> إظهار القسم في الموقع</label><div class="full"><button class="btn btn-primary btn-large" type="submit">حفظ القسم</button></div></form><div id="category-form-message" class="message"></div>
+  </div></div>
+
+<script>
+const $=s=>document.querySelector(s);let token=sessionStorage.getItem('hrkit_admin_token')||'';let categories=[],resources=[];
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+const headers=()=>({'Authorization':'Bearer '+token,'Content-Type':'application/json'});
+async function api(url,opts={}){const r=await fetch(url,{...opts,headers:{...headers(),...(opts.headers||{})}});const d=await r.json().catch(()=>({}));if(r.status===401)throw Object.assign(new Error('Unauthorized'),{status:401});if(!r.ok)throw Object.assign(new Error(d.error||'تعذر تنفيذ الطلب'),{status:r.status});return d}
+async function login(){const p=$('#admin-password').value.trim();if(!p)return;try{const d=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:p})});const out=await d.json();if(!d.ok)throw new Error(out.error||'كلمة المرور غير صحيحة');token=out.token;sessionStorage.setItem('hrkit_admin_token',token);showAdmin()}catch(e){$('#login-error').textContent=e.message}}
+function showAdmin(){$('#login-screen').classList.add('hidden');$('#admin-app').classList.remove('hidden');loadAll();loadSettings()}
+$('#login-btn').onclick=login;$('#admin-password').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
+$('#logout').onclick=async()=>{try{await api('/api/admin/logout',{method:'POST'})}catch{}sessionStorage.removeItem('hrkit_admin_token');token='';location.reload()};
+async function loadAll(){try{[categories,resources]=await Promise.all([api('/api/admin/categories'),api('/api/admin/resources')]);renderCategories();renderCategoryOptions();renderResources();renderStats()}catch(e){if(e.status===401){sessionStorage.removeItem('hrkit_admin_token');location.reload()}else $('#list-message').textContent=e.message}}
+function renderStats(){$('#stat-resources').textContent=resources.filter(r=>r.status!=='archived').length;$('#stat-categories').textContent=categories.filter(c=>c.is_visible).length;$('#stat-downloads').textContent=resources.reduce((n,r)=>n+Number(r.downloads||0),0).toLocaleString('ar-SA')}
+function renderCategoryOptions(){const current=$('#resource-category').value;$('#resource-category').innerHTML=categories.filter(c=>c.is_visible).map(c=>`<option value="${c.id}">${esc(c.icon||'📄')} ${esc(c.name)}</option>`).join('');if(current)$('#resource-category').value=current;$('#admin-category-filter').innerHTML='<option value="">كل الأقسام</option>'+categories.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}
+function renderCategories(){$('#category-list').innerHTML=categories.map(c=>`<div class="category-admin"><span class="cat-icon">${esc(c.icon||'📄')}</span><span class="cat-info"><strong>${esc(c.name)}</strong><small>${Number(c.resource_count||0)} ملف · ${c.is_visible?'ظاهر':'مخفي'}</small></span><div class="category-actions"><button class="icon-btn" data-cat-edit="${c.id}">تعديل</button><button class="icon-btn" data-cat-toggle="${c.id}">${c.is_visible?'إخفاء':'إظهار'}</button>${Number(c.resource_count||0)===0?`<button class="icon-btn danger" data-cat-delete="${c.id}">حذف</button>`:''}</div></div>`).join('')||'<div class="empty">لا توجد أقسام.</div>';document.querySelectorAll('[data-cat-edit]').forEach(b=>b.onclick=()=>openCategory(+b.dataset.catEdit));document.querySelectorAll('[data-cat-toggle]').forEach(b=>b.onclick=()=>toggleCategory(+b.dataset.catToggle));document.querySelectorAll('[data-cat-delete]').forEach(b=>b.onclick=()=>deleteCategory(+b.dataset.catDelete))}
+function statusLabel(s){return s==='published'?'منشور':s==='hidden'?'مخفي':'مؤرشف'}
+function resourceType(r){const n=(r.file_name||'').toLowerCase(),t=(r.file_type||'').toLowerCase();if(t.includes('pdf')||/\.pdf$/.test(n))return 'PDF';if(t.includes('spreadsheet')||/\.(xlsx?|csv)$/.test(n))return 'XLS';if(t.includes('word')||/\.docx?$/.test(n))return 'DOC';if(t.includes('presentation')||/\.pptx?$/.test(n))return 'PPT';return 'FILE'}
+function renderResources(){const q=$('#admin-search').value.trim().toLowerCase(),st=$('#admin-status').value,cat=$('#admin-category-filter').value;const list=resources.filter(r=>(!q||[r.title,r.description,r.keywords,r.file_name].join(' ').toLowerCase().includes(q))&&(!st||r.status===st)&&(!cat||String(r.category_id)===String(cat)));$('#resource-list').innerHTML=list.map(r=>`<div class="admin-resource"><div class="mini-icon">${resourceType(r)}</div><div class="admin-resource-main"><strong>${esc(r.title)}</strong><small>${esc(r.category_name||'عام')} · v${esc(r.version||'1.0')} · ${Number(r.downloads||0)} تحميل ${r.featured?'· ★ مميز':''}</small></div><span class="status-pill status-${esc(r.status)}">${statusLabel(r.status)}</span><div class="resource-actions"><button class="icon-btn" data-edit="${r.id}">تعديل</button><button class="icon-btn" data-toggle="${r.id}">${r.status==='published'?'إخفاء':r.status==='hidden'?'نشر':'استعادة'}</button>${r.status!=='archived'?`<button class="icon-btn" data-archive="${r.id}">أرشفة</button>`:''}<button class="icon-btn danger" data-delete="${r.id}">حذف</button></div></div>`).join('')||'<div class="empty"><strong>لا توجد ملفات مطابقة</strong></div>';document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editResource(+b.dataset.edit));document.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=()=>toggleResource(+b.dataset.toggle));document.querySelectorAll('[data-archive]').forEach(b=>b.onclick=()=>archiveResource(+b.dataset.archive));document.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>deleteResource(+b.dataset.delete))}
+$('#admin-search').oninput=renderResources;$('#admin-status').onchange=renderResources;$('#admin-category-filter').onchange=renderResources;
+$('#resource-form').onsubmit=async e=>{e.preventDefault();const id=$('#resource-id').value,body={title:$('#resource-title').value,category_id:$('#resource-category').value,description:$('#resource-description').value,keywords:$('#resource-keywords').value,version:$('#resource-version').value,file_url:$('#resource-url').value,featured:$('#resource-featured').checked};$('#resource-message').className='message';$('#resource-message').textContent='جاري الحفظ...';try{await api(id?`/api/admin/resources/${id}`:'/api/admin/resources',{method:id?'PATCH':'POST',body:JSON.stringify(body)});$('#resource-message').classList.add('success');$('#resource-message').textContent=id?'تم تحديث الملف.':'تمت إضافة الملف.';resetResourceForm();await loadAll()}catch(err){$('#resource-message').classList.add('error');$('#resource-message').textContent=err.message}};
+function resetResourceForm(){$('#resource-form').reset();$('#resource-id').value='';$('#resource-version').value='1.0';$('#resource-form-title').textContent='إضافة ملف';$('#save-resource').textContent='نشر الملف';$('#cancel-edit').classList.add('hidden');$('#resource-featured').checked=false;window.scrollTo({top:0,behavior:'smooth'})}
+$('#cancel-edit').onclick=resetResourceForm;function editResource(id){const r=resources.find(x=>x.id===id);if(!r)return;$('#resource-id').value=r.id;$('#resource-title').value=r.title;$('#resource-category').value=r.category_id||'';$('#resource-description').value=r.description||'';$('#resource-keywords').value=r.keywords||'';$('#resource-version').value=r.version||'1.0';$('#resource-url').value=r.file_url||'';$('#resource-featured').checked=!!r.featured;$('#resource-form-title').textContent='تعديل الملف';$('#save-resource').textContent='حفظ التعديلات';$('#cancel-edit').classList.remove('hidden');$('#resource-editor').scrollIntoView({behavior:'smooth',block:'start'})}
+async function toggleResource(id){const r=resources.find(x=>x.id===id);if(!r)return;const next=r.status==='published'?'hidden':'published';try{await api(`/api/admin/resources/${id}`,{method:'PATCH',body:JSON.stringify({status:next})});await loadAll()}catch(e){alert(e.message)}}
+async function archiveResource(id){if(!confirm('أرشفة الملف؟ سيختفي من الموقع ويمكن استعادته لاحقًا.'))return;try{await api(`/api/admin/resources/${id}`,{method:'PATCH',body:JSON.stringify({status:'archived'})});await loadAll()}catch(e){alert(e.message)}}
+async function deleteResource(id){if(!confirm('حذف الملف نهائيًا؟ لا يمكن التراجع عن هذا الإجراء.'))return;try{await api(`/api/admin/resources/${id}`,{method:'DELETE'});await loadAll()}catch(e){alert(e.message)}}
+$('#new-category').onclick=()=>openCategory();$('#quick-add-category').onclick=()=>openCategory();$('#quick-add-resource').onclick=()=>{resetResourceForm();$('#resource-editor').scrollIntoView({behavior:'smooth',block:'start'})};$('#quick-settings').onclick=()=>$('#site-settings').scrollIntoView({behavior:'smooth'});$('#quick-password').onclick=()=>$('#password-settings').scrollIntoView({behavior:'smooth'});$('#close-category').onclick=()=>$('#category-modal').classList.add('hidden');
+const ICONS=['📄','📝','📁','📂','📋','🗂️','📊','📑','🧾','📌','📎','✉️','📨','📤','📥','🗃️','⭐','🔖','👥','🖊️','🔍','🗒️','🧮','📚','📇','🗃️','🧷','🛠️','💼','🏢','📜','🧑‍💼','📦','🔔','💡','📝'];
+function renderIconPicker(selected='📄'){const el=$('#icon-picker');el.innerHTML=ICONS.filter((x,i,a)=>a.indexOf(x)===i).map(icon=>`<button type="button" class="icon-choice ${icon===selected?'selected':''}" data-icon="${icon}">${icon}</button>`).join('');el.querySelectorAll('.icon-choice').forEach(b=>b.onclick=()=>{const icon=b.dataset.icon;$('#category-icon').value=icon;el.querySelectorAll('.icon-choice').forEach(x=>x.classList.remove('selected'));b.classList.add('selected')})}
+function openCategory(id){const c=id?categories.find(x=>x.id===id):null;$('#category-modal-title').textContent=c?'تعديل قسم':'إضافة قسم';$('#category-id').value=c?.id||'';$('#category-name').value=c?.name||'';$('#category-icon').value=c?.icon||'📄';$('#category-order').value=c?.sort_order??(categories.length+1);$('#category-visible').checked=c?!!c.is_visible:true;$('#category-form-message').textContent='';renderIconPicker(c?.icon||'📄');$('#category-modal').classList.remove('hidden')}
+$('#category-form').onsubmit=async e=>{e.preventDefault();const id=$('#category-id').value,body={name:$('#category-name').value,icon:$('#category-icon').value,sort_order:Number($('#category-order').value||0),is_visible:$('#category-visible').checked};try{await api(id?`/api/admin/categories/${id}`:'/api/admin/categories',{method:id?'PATCH':'POST',body:JSON.stringify(body)});$('#category-modal').classList.add('hidden');await loadAll()}catch(err){$('#category-form-message').className='message error';$('#category-form-message').textContent=err.message}};
+async function toggleCategory(id){const c=categories.find(x=>x.id===id);try{await api(`/api/admin/categories/${id}`,{method:'PATCH',body:JSON.stringify({is_visible:!c.is_visible})});await loadAll()}catch(e){alert(e.message)}}
+async function deleteCategory(id){const c=categories.find(x=>x.id===id);if(Number(c.resource_count)>0){alert('لا يمكن حذف قسم يحتوي على ملفات. انقل الملفات إلى قسم آخر أولًا.');return}if(!confirm(`حذف قسم «${c.name}»؟`))return;try{await api(`/api/admin/categories/${id}`,{method:'DELETE'});await loadAll()}catch(e){alert(e.message)}}
+async function loadSettings(){try{const s=await api('/api/admin/settings');$('#setting-x').value=s.x||'';$('#setting-linkedin').value=s.linkedin||'';$('#setting-suggestion').value=s.suggestion||''}catch(e){}}
+$('#settings-form').onsubmit=async e=>{e.preventDefault();const body={x:$('#setting-x').value,linkedin:$('#setting-linkedin').value,suggestion:$('#setting-suggestion').value};try{await api('/api/admin/settings',{method:'PATCH',body:JSON.stringify(body)});$('#settings-message').className='message success';$('#settings-message').textContent='تم حفظ الروابط.'}catch(e){$('#settings-message').className='message error';$('#settings-message').textContent=e.message}};
+$('#password-form').onsubmit=async e=>{e.preventDefault();const oldp=$('#old-password').value,newp=$('#new-password').value,confirmP=$('#confirm-password').value;if(newp!==confirmP){$('#password-message').className='message error';$('#password-message').textContent='تأكيد كلمة المرور غير مطابق.';return}try{await api('/api/admin/password',{method:'POST',body:JSON.stringify({old_password:oldp,new_password:newp})});$('#password-message').className='message success';$('#password-message').textContent='تم تغيير كلمة المرور. سيتم تسجيل خروجك الآن...';setTimeout(()=>{sessionStorage.removeItem('hrkit_admin_token');location.reload()},1000)}catch(e){$('#password-message').className='message error';$('#password-message').textContent=e.message}}
+if(token)api('/api/admin/check').then(showAdmin).catch(()=>{sessionStorage.removeItem('hrkit_admin_token');token=''})
+</script></body></html>
