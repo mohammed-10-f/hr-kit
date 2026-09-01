@@ -20,34 +20,12 @@
       <label class="full">الوصف<textarea name="description" placeholder="وصف مختصر يساعد الباحث على معرفة محتوى الملف"></textarea></label>
       <label>الكلمات المفتاحية<input name="keywords" placeholder="إخلاء طرف، مخالصة، إنهاء خدمة"></label>
       <label>الإصدار<input name="version" value="1.0"></label>
-      <label class="full">الملف<input type="file" name="file" required accept=".doc,.docx,.xls,.xlsx,.pdf,.ppt,.pptx,.zip"></label>
+      <label class="full">رابط الملف<input name="file_url" required type="url" placeholder="https://..."></label>
       <button class="primary full" type="submit">نشر المورد</button>
     </form>
     <div id="message"></div>
   </section>
 </main>
-<script>
-const token = prompt("أدخل كلمة مرور الإدارة:");
-const headers = { Authorization: "Bearer " + (token || "") };
-async function loadCats(){
-  const cats = await fetch("/api/categories").then(r=>r.json());
-  category.innerHTML = cats.map(c=>`<option value="${c.id}">${c.icon} ${c.name}</option>`).join("");
-}
-loadCats();
-document.querySelector("#resource-form").addEventListener("submit", async e=>{
-  e.preventDefault();
-  const form = new FormData(e.target);
-  const file = form.get("file");
-  message.textContent = "جاري رفع الملف...";
-  const upload = new FormData(); upload.append("file", file);
-  const up = await fetch("/api/admin/upload",{method:"POST",headers,body:upload}).then(r=>r.json());
-  if(!up.ok){ message.textContent = up.error || "تعذر رفع الملف"; return; }
-  const body = Object.fromEntries(form.entries());
-  body.file_key = up.key; body.file_name = up.file_name; body.file_type = up.file_type; body.file_size = up.file_size;
-  const saved = await fetch("/api/admin/resources",{method:"POST",headers:{"Authorization":headers.Authorization,"Content-Type":"application/json"},body:JSON.stringify(body)}).then(r=>r.json());
-  message.textContent = saved.ok ? "تم نشر المورد بنجاح." : (saved.error || "تعذر حفظ المورد");
-  if(saved.ok) e.target.reset();
-});
-</script>
+<script>const token=prompt("أدخل كلمة مرور الإدارة:");const headers={Authorization:"Bearer "+(token||""),"Content-Type":"application/json"};async function loadCats(){const cats=await fetch("/api/categories").then(r=>r.json());category.innerHTML=cats.map(c=>`<option value="${c.id}">${c.icon} ${c.name}</option>`).join("")}loadCats();document.querySelector("#resource-form").addEventListener("submit",async e=>{e.preventDefault();const body=Object.fromEntries(new FormData(e.target).entries());message.textContent="جاري الحفظ...";const d=await fetch("/api/admin/resources",{method:"POST",headers,body:JSON.stringify(body)}).then(r=>r.json());message.textContent=d.ok?"تم نشر المورد بنجاح.":(d.error||"تعذر الحفظ");if(d.ok)e.target.reset()});</script>
 </body>
 </html>
