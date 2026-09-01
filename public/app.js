@@ -10,11 +10,11 @@ async function getJSON(url){
 function escapeHTML(s){return String(s ?? "").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));}
 function fileIcon(r){
   const n=(r.file_name||"").toLowerCase(), t=(r.file_type||"").toLowerCase();
-  if(t.includes("spreadsheet")||/\.(xlsx?|csv)$/.test(n)) return "▦";
-  if(t.includes("pdf")||/\.pdf$/.test(n)) return "PDF";
-  if(/\.docx?$/.test(n)||t.includes("word")) return "W";
-  if(/\.pptx?$/.test(n)||t.includes("presentation")) return "P";
-  return "▤";
+  if(t.includes("spreadsheet")||/\.(xlsx?|csv)$/.test(n)) return '<img class="file-type-logo excel-logo" src="/assets/excel.svg" alt="Excel">';
+  if(t.includes("pdf")||/\.pdf$/.test(n)) return '<span class="file-type-text pdf-logo">PDF</span>';
+  if(/\.docx?$/.test(n)||t.includes("word")) return '<span class="file-type-text word-logo">W</span>';
+  if(/\.pptx?$/.test(n)||t.includes("presentation")) return '<span class="file-type-text ppt-logo">P</span>';
+  return '<span class="file-type-text">▤</span>';
 }
 function applySettings(s){
   const links={x:["#header-x","#footer-x"],linkedin:["#header-linkedin","#footer-linkedin"]};
@@ -36,11 +36,11 @@ async function loadCategories(){
     loadCategories(); loadResources();
   });
 }
-function resourceHTML(r){return `
+function resourceHTML(r){const cats=(r.categories&&r.categories.length?r.categories:[{name:r.category_name||"عام",icon:r.icon||"▤"}]);return `
   <article class="resource-card">
-    <div class="file-icon">${escapeHTML(fileIcon(r))}</div>
+    <div class="file-icon">${fileIcon(r)}</div>
     <div class="resource-body">
-      <div class="resource-top"><span class="tag">${escapeHTML(r.icon||"▤")} ${escapeHTML(r.category_name||"عام")}</span>${r.featured?'<span class="featured-badge">★ مميز</span>':''}</div>
+      <div class="resource-top">${cats.slice(0,3).map(c=>`<span class="tag">${escapeHTML(c.icon||"▤")} ${escapeHTML(c.name)}</span>`).join('')}${cats.length>3?`<span class="tag tag-more">+${cats.length-3}</span>`:''}${r.featured?'<span class="featured-badge">★ مميز</span>':''}</div>
       <h3>${escapeHTML(r.title)}</h3>
       <p>${escapeHTML(r.description||"لا يوجد وصف لهذا الملف.")}</p>
       <div class="meta">الإصدار ${escapeHTML(r.version||"1.0")} · ${Number(r.downloads||0)} تحميل</div>
