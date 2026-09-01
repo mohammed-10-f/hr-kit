@@ -15,7 +15,14 @@
       <a class="brand" href="/" aria-label="HR Kit">
         <img src="/assets/logo.png" alt="محمد الروقي HR" class="brand-logo">
       </a>
+      <nav class="site-nav" aria-label="التنقل">
+        <a href="#categories">الأقسام</a>
+        <a href="#resources">الملفات</a>
+        <a href="#suggestion" id="header-suggestion">اقتراح</a>
+      </nav>
       <div class="topbar-actions">
+        <a class="social-link" id="header-x" href="#" target="_blank" rel="noopener noreferrer" aria-label="حساب X" hidden>𝕏</a>
+        <a class="social-link linkedin" id="header-linkedin" href="#" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" hidden>in</a>
         <a class="admin-link" href="/admin.html">إدارة المحتوى</a>
       </div>
     </div>
@@ -33,47 +40,38 @@
       </div>
     </section>
 
-    <section class="section container">
+    <section class="section container" id="categories">
       <div class="section-head">
-        <div>
-          <h2>تصفح حسب النوع</h2>
-          <p>اختر نوع المحتوى الذي تبحث عنه</p>
-        </div>
+        <div><h2>تصفح حسب النوع</h2><p>اختر نوع المحتوى الذي تبحث عنه</p></div>
       </div>
-      <div id="categories" class="categories"></div>
+      <div id="categories-list" class="categories"></div>
     </section>
 
     <section class="section container featured-section" id="featured-section">
-      <div class="section-head">
-        <div>
-          <h2>الأكثر استخدامًا</h2>
-          <p>ملفات مميزة وسريعة الوصول</p>
-        </div>
-      </div>
+      <div class="section-head"><div><h2>الأكثر استخدامًا</h2><p>ملفات مميزة وسريعة الوصول</p></div></div>
       <div id="featured" class="resource-grid"></div>
     </section>
 
-    <section class="section container">
-      <div class="section-head">
-        <div>
-          <h2 id="results-title">آخر التحديثات</h2>
-          <p id="results-count"></p>
-        </div>
-      </div>
-      <div id="resources" class="resource-grid"></div>
-      <div id="empty" class="empty hidden">
-        <div class="empty-icon">⌕</div>
-        <strong>لم نجد نتائج</strong>
-        <p>جرّب كلمة بحث مختلفة أو تصفح الأقسام.</p>
+    <section class="section container" id="resources">
+      <div class="section-head"><div><h2 id="results-title">آخر التحديثات</h2><p id="results-count"></p></div></div>
+      <div id="resources-list" class="resource-grid"></div>
+      <div id="empty" class="empty hidden"><div class="empty-icon">⌕</div><strong>لم نجد نتائج</strong><p>جرّب كلمة بحث مختلفة أو تصفح الأقسام.</p></div>
+    </section>
+
+    <section class="suggestion-section container" id="suggestion">
+      <div class="suggestion-card">
+        <div><span class="suggestion-kicker">شاركنا رأيك</span><h2>عندك نموذج أو ملف ناقص؟</h2><p>أرسل اقتراحك، وسيتم مراجعته وإضافته إلى المرجع عند اعتماده.</p></div>
+        <a id="suggestion-link" class="btn btn-primary" href="#" target="_blank" rel="noopener noreferrer">إرسال اقتراح</a>
       </div>
     </section>
   </main>
 
   <footer>
-    <div class="container footer-inner">
-      <img src="/assets/logo.png" alt="" class="footer-logo">
-      <span>مرجع الموارد البشرية</span>
+    <div class="container footer-main">
+      <div class="footer-brand"><img src="/assets/logo.png" alt="محمد الروقي HR" class="footer-logo"><div><strong>HR Kit</strong><span>مرجع موظف الموارد البشرية</span></div></div>
+      <div class="footer-links"><a id="footer-x" href="#" target="_blank" rel="noopener noreferrer" hidden>𝕏 X</a><a id="footer-linkedin" href="#" target="_blank" rel="noopener noreferrer" hidden>LinkedIn</a><a id="footer-suggestion" href="#" target="_blank" rel="noopener noreferrer">اقتراح ملف</a></div>
     </div>
+    <div class="container footer-bottom"><span>© <span id="year"></span> HR Kit</span><span>تطوير محمد الروقي · جميع الحقوق محفوظة</span></div>
   </footer>
   <script src="/app.js"></script>
 </body>
