@@ -42,7 +42,7 @@ async function getSetting(env,key){const r=await env.DB.prepare('SELECT value FR
 async function setSetting(env,key,value){await env.DB.prepare('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').bind(key,value).run()}
 async function createSession(env){const token=crypto.randomUUID()+'-'+crypto.randomUUID();await env.DB.prepare('INSERT INTO admin_sessions(token_hash,expires_at) VALUES(?,?)').bind(await sha256(token),Date.now()+7*24*60*60*1000).run();return token}
 async function isAdmin(req,env){const token=(req.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'').trim();if(!token)return false;const r=await env.DB.prepare('SELECT 1 FROM admin_sessions WHERE token_hash=? AND expires_at>?').bind(await sha256(token),Date.now()).first();return !!r}
-async function admin(req,env,fn){if(!(await isAdmin(req,env)))return cors(bad('Unauthorized',401));try{return cors(await fn())}catch(e){return cors(json({error:e.message||'Server error'},500))}}
+async function admin(req,env,fn){if(!(await isAdmin(req,env)))return cors(bad('Unauthorized',401));try{return cors(await fn())}catch(e){if(e?.message==='RELEASE_IMMUTABLE'||e?.status===409)return cors(json({error:'لا يمكن رفع الملفات حاليًا لأن Release التخزين مقفل في GitHub. يجب إلغاء خاصية Immutable لهذا الـRelease من GitHub دون إنشاء Release جديد.'},409));return cors(json({error:'تعذر إتمام العملية حاليًا. حاول مرة أخرى.'},500))}}
 function inferFileName(url){try{const u=new URL(url);const n=decodeURIComponent(u.pathname.split('/').pop()||'');return /\.[a-z0-9]{2,6}$/i.test(n)?n:''}catch{return ''}}
 function inferFileType(name){const ext=(name.match(/\.([a-z0-9]{2,6})$/i)||[])[1]?.toLowerCase();return ({pdf:'application/pdf',doc:'application/msword',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',xls:'application/vnd.ms-excel',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',csv:'text/csv',ppt:'application/vnd.ms-powerpoint',pptx:'application/vnd.openxmlformats-officedocument.presentationml.presentation'}[ext]||'')}
 
@@ -51,7 +51,7 @@ async function githubConfig(env){
   // backwards-compatible fallback for installations that have not migrated yet.
   const owner=String(env.GITHUB_OWNER||await getSetting(env,'github_owner')).trim();
   const repo=String(env.GITHUB_REPO||await getSetting(env,'github_repo')).trim();
-  const tag=String(env.GITHUB_RELEASE_TAG||await getSetting(env,'github_release_tag')||'files-v1').trim();
+  const tag=String(env.GITHUB_RELEASE_TAG||await getSetting(env,'github_release_tag')||'files-v2').trim();
   return {owner,repo,tag,token:String(env.GITHUB_TOKEN||'').trim()};
 }
 
@@ -106,30 +106,14 @@ async function githubRequest(env,path,options={},host='https://api.github.com'){
 
 async function ensureGitHubRelease(env){
   const {owner,repo,tag}=await githubConfig(env);
-  if(!owner||!repo)throw new GitHubApiError(500,'أكمل إعداد مستودع GitHub: GITHUB_OWNER و GITHUB_REPO.');
-  try{
-    return await githubRequest(
-      env,
-      `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases/tags/${encodeURIComponent(tag)}`
-    );
-  }catch(e){
-    if(!(e instanceof GitHubApiError)||e.status!==404)throw e;
-    return await githubRequest(
-      env,
-      `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases`,
-      {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          tag_name:tag,
-          name:'HR Reference Files',
-          body:'Files storage for HR Reference',
-          draft:false,
-          prerelease:false
-        })
-      }
-    );
-  }
+  if(!owner||!repo)throw new GitHubApiError(500,'إعداد تخزين الملفات غير مكتمل.');
+  if(tag!=='files-v2')throw new GitHubApiError(500,'إعداد Release غير صحيح.');
+  // IMPORTANT: never create or replace a Release here. The existing files-v2
+  // release is the storage container for this application.
+  return await githubRequest(
+    env,
+    `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases/tags/${encodeURIComponent(tag)}`
+  );
 }
 
 function safeAssetName(name){
@@ -140,6 +124,8 @@ function safeAssetName(name){
 async function uploadToGitHub(env,file){
   const release=await ensureGitHubRelease(env);
   const {owner,repo}=await githubConfig(env);
+  if(release.tag_name!=='files-v2')throw new GitHubApiError(500,'Release التخزين المطلوب غير صحيح.');
+  if(release.immutable===true)throw new GitHubApiError(409,'RELEASE_IMMUTABLE','Release files-v2 is immutable.',{message:'Release files-v2 is immutable'});
   const name=safeAssetName(file.name);
   const old=Array.isArray(release.assets)?release.assets.find(a=>a.name===name):null;
 
