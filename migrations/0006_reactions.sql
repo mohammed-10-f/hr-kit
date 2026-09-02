@@ -1,0 +1,2 @@
+CREATE TABLE IF NOT EXISTS resource_reactions (resource_id INTEGER NOT NULL, visitor_hash TEXT NOT NULL, reaction TEXT NOT NULL CHECK(reaction IN ('like','dislike')), created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(resource_id,visitor_hash), FOREIGN KEY(resource_id) REFERENCES resources(id) ON DELETE CASCADE);
+CREATE INDEX IF NOT EXISTS idx_resource_reactions_resource ON resource_reactions(resource_id);
