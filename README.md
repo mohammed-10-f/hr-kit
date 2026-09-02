@@ -46,14 +46,59 @@ npm run deploy
 - `GITHUB_TOKEN` — **Secret**
 - `GITHUB_OWNER` — Variable = `mohammed-10-f`
 - `GITHUB_REPO` — Variable = `hr-reference-files`
-- `GITHUB_RELEASE_TAG` — Variable = `v1`
+- `GITHUB_RELEASE_TAG` — Variable = `files-v1`
 
 يجب أن يكون `GITHUB_TOKEN` من نوع Fine-grained Personal Access Token، وممنوحًا للمستودع `hr-reference-files` مع صلاحية:
 
 `Contents: Read and write`
 
-بعد الحفظ، يستطيع المدير من لوحة HR Reference اختيار ملف من جهازه. Worker ينشئ Release `v1` عند الحاجة، ثم يرفع الملف كـRelease Asset ويحفظ رابط `browser_download_url` في قاعدة البيانات. زر التحميل في الموقع يمر عبر `/api/download/:id` ثم يحوّل المستخدم إلى رابط التنزيل المباشر.
+بعد الحفظ، يستطيع المدير من لوحة HR Reference اختيار ملف من جهازه. Worker ينشئ Release `files-v1` عند الحاجة، ثم يرفع الملف كـRelease Asset ويحفظ رابط `browser_download_url` في قاعدة البيانات. زر التحميل في الموقع يمر عبر `/api/download/:id` ثم يحوّل المستخدم إلى رابط التنزيل المباشر.
 
 ### مهم
 
 `GITHUB_TOKEN` لا يوضع في الكود ولا في `wrangler.toml` ولا في واجهة الموقع. يبقى Secret داخل Cloudflare فقط.
+
+
+### اختبار اتصال GitHub
+
+بعد تسجيل الدخول إلى لوحة الإدارة، افتح **إعدادات الموقع** واضغط **اختبار اتصال GitHub**.
+كما يتوفر endpoint محمي للإدارة:
+`GET /api/admin/github/test`
+
+الاختبار لا يعرض الـ token، ويعيد حالة HTTP ورسالة GitHub التفصيلية عند الفشل.
+
+### إعدادات Cloudflare المطلوبة
+
+Runtime Variables:
+- `GITHUB_OWNER=mohammed-10-f`
+- `GITHUB_REPO=hr-reference-files`
+- `GITHUB_RELEASE_TAG=files-v1`
+
+Secret:
+- `GITHUB_TOKEN=<secret>`
+
+الـ token يجب أن يكون Fine-grained Personal Access Token، ومقيدًا بالمستودع `mohammed-10-f/hr-reference-files` مع:
+- Contents: Read and write
+
+### النشر
+
+```bash
+npm install
+npx wrangler deploy
+```
+
+أو استخدم script المشروع:
+
+```bash
+npm run deploy
+```
+
+### رفع الملفات
+
+رفع الملفات يتم من `FormData` إلى Worker، ثم:
+1. جلب Release بالوسم `files-v1`.
+2. إنشاءه عند عدم وجوده.
+3. فحص Release Assets عن نفس اسم الملف.
+4. حذف الـ asset القديم إن وجد.
+5. رفع الملف binary إلى `uploads.github.com`.
+6. حفظ `browser_download_url` في D1.

@@ -39,23 +39,42 @@ function inferFileName(url){try{const u=new URL(url);const n=decodeURIComponent(
 function inferFileType(name){const ext=(name.match(/\.([a-z0-9]{2,6})$/i)||[])[1]?.toLowerCase();return ({pdf:'application/pdf',doc:'application/msword',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',xls:'application/vnd.ms-excel',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',csv:'text/csv',ppt:'application/vnd.ms-powerpoint',pptx:'application/vnd.openxmlformats-officedocument.presentationml.presentation'}[ext]||'')}
 
 async function githubConfig(env){
+  // Runtime variables are authoritative. The D1 settings remain only as a
+  // backwards-compatible fallback for installations that have not migrated yet.
   const owner=String(env.GITHUB_OWNER||await getSetting(env,'github_owner')).trim();
   const repo=String(env.GITHUB_REPO||await getSetting(env,'github_repo')).trim();
-  const tag=String(env.GITHUB_RELEASE_TAG||await getSetting(env,'github_release_tag')||'v1').trim();
+  const tag=String(env.GITHUB_RELEASE_TAG||await getSetting(env,'github_release_tag')||'files-v1').trim();
   return {owner,repo,tag,token:String(env.GITHUB_TOKEN||'').trim()};
 }
+
+class GitHubApiError extends Error{
+  constructor(status,detail,data={}){
+    super(detail);
+    this.name='GitHubApiError';
+    this.status=status;
+    this.githubResponse=data;
+  }
+}
+
+function githubErrorHint(status,detail){
+  if(status===401)return 'رمز GitHub غير صالح أو منتهي الصلاحية. تحقق من GITHUB_TOKEN.';
+  if(status===403)return 'رفض GitHub الطلب. تحقق من User-Agent وصلاحيات Fine-grained token للمستودع Contents: Read and write، وأي سياسات إدارية للمؤسسة/المستودع.';
+  if(status===404)return 'المستودع أو Release المطلوب غير موجود، أو أن الرمز لا يملك صلاحية رؤية المستودع.';
+  if(status===422)return 'رفض GitHub بيانات الطلب (Validation error). راجع اسم الملف أو بيانات Release/Asset.';
+  return `فشل طلب GitHub بحالة HTTP ${status}.`;
+}
+
 async function githubRequest(env,path,options={},host='https://api.github.com'){
   const {token}=await githubConfig(env);
-  if(!token) throw new Error('لم يتم إعداد GITHUB_TOKEN في Cloudflare Secrets.');
-  const r=await fetch(host+path,{
-    ...options,
-    headers:{
-      Accept:'application/vnd.github+json',
-      'X-GitHub-Api-Version':'2022-11-28',
-      Authorization:`Bearer ${token}`,
-      ...(options.headers||{})
-    }
-  });
+  if(!token) throw new GitHubApiError(500,'لم يتم إعداد GITHUB_TOKEN في Cloudflare Secrets.');
+  const headers={
+    ...(options.headers||{}),
+    Accept:'application/vnd.github+json',
+    'X-GitHub-Api-Version':'2022-11-28',
+    'User-Agent':'HR-Reference-Cloudflare',
+    Authorization:`Bearer ${token}`
+  };
+  const r=await fetch(host+path,{...options,headers});
   const text=await r.text();
   let data={};
   if(text){
@@ -64,33 +83,147 @@ async function githubRequest(env,path,options={},host='https://api.github.com'){
   }
   if(!r.ok){
     const detail=String(data.message||text||`GitHub API ${r.status}`).trim();
-    throw new Error(`تعذر التواصل مع GitHub (${r.status}): ${detail}`);
+    console.error('[GitHub] request failed',{
+      status:r.status,
+      path,
+      host,
+      message:detail,
+      documentation_url:data.documentation_url||null,
+      errors:Array.isArray(data.errors)?data.errors:null
+    });
+    throw new GitHubApiError(r.status,detail,data);
   }
   return data;
 }
+
 async function ensureGitHubRelease(env){
-  const {owner,repo,tag}=await githubConfig(env); if(!owner||!repo) throw new Error('أكمل إعداد مستودع GitHub: GITHUB_OWNER و GITHUB_REPO.');
-  try{return await githubRequest(env,`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases/tags/${encodeURIComponent(tag)}`)}
-  catch(e){
-    if(!/Not Found/i.test(e.message))throw e;
-    return await githubRequest(env,`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tag_name:tag,name:'HR Reference Files',body:'ملفات مكتبة الموارد البشرية',draft:false,prerelease:false})});
+  const {owner,repo,tag}=await githubConfig(env);
+  if(!owner||!repo)throw new GitHubApiError(500,'أكمل إعداد مستودع GitHub: GITHUB_OWNER و GITHUB_REPO.');
+  try{
+    return await githubRequest(
+      env,
+      `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases/tags/${encodeURIComponent(tag)}`
+    );
+  }catch(e){
+    if(!(e instanceof GitHubApiError)||e.status!==404)throw e;
+    return await githubRequest(
+      env,
+      `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases`,
+      {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          tag_name:tag,
+          name:'HR Reference Files',
+          body:'Files storage for HR Reference',
+          draft:false,
+          prerelease:false
+        })
+      }
+    );
   }
 }
+
 function safeAssetName(name){
   const clean=String(name||'file').split(/[\\/]/).pop().trim().replace(/[\u0000-\u001f<>:"|?*]/g,'-');
   return clean.slice(0,180)||`file-${Date.now()}`;
 }
+
 async function uploadToGitHub(env,file){
-  const release=await ensureGitHubRelease(env); const {owner,repo}=await githubConfig(env); const name=safeAssetName(file.name); const old=Array.isArray(release.assets)?release.assets.find(a=>a.name===name):null;
-  if(old) await githubRequest(env,`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases/assets/${old.id}`,{method:'DELETE'});
+  const release=await ensureGitHubRelease(env);
+  const {owner,repo}=await githubConfig(env);
+  const name=safeAssetName(file.name);
+  const old=Array.isArray(release.assets)?release.assets.find(a=>a.name===name):null;
+
+  if(old){
+    await githubRequest(
+      env,
+      `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases/assets/${old.id}`,
+      {method:'DELETE'}
+    );
+  }
+
   const body=await file.arrayBuffer();
+  const contentType=file.type||inferFileType(name)||'application/octet-stream';
+
+  // GitHub returns an upload_url on the Release itself. Use it when available;
+  // never send a binary asset to api.github.com.
+  let uploadUrl=String(release.upload_url||'').replace(/\{\?name,label\}$/,'');
+  if(!uploadUrl){
+    uploadUrl=`https://uploads.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases/${release.id}/assets`;
+  }
+  const uploadHost=new URL(uploadUrl).origin;
+  if(uploadHost!=='https://uploads.github.com'){
+    throw new GitHubApiError(500,'عنوان رفع Release غير صالح؛ يجب أن يستخدم uploads.github.com.');
+  }
+  const uploadPath=new URL(uploadUrl).pathname;
   const asset=await githubRequest(
     env,
-    `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases/${release.id}/assets?name=${encodeURIComponent(name)}`,
-    {method:'POST',headers:{'Content-Type':file.type||'application/octet-stream','Content-Length':String(body.byteLength)},body},
-    'https://uploads.github.com'
+    `${uploadPath}?name=${encodeURIComponent(name)}`,
+    {
+      method:'POST',
+      headers:{
+        'Content-Type':contentType,
+        'Content-Length':String(body.byteLength)
+      },
+      body
+    },
+    uploadHost
   );
-  return {url:asset.browser_download_url,file_name:asset.name,file_type:file.type||inferFileType(asset.name),size:asset.size,github_asset_id:asset.id};
+
+  return {
+    url:asset.browser_download_url,
+    file_name:asset.name,
+    file_type:file.type||inferFileType(asset.name)||'application/octet-stream',
+    size:asset.size,
+    github_asset_id:asset.id
+  };
+}
+
+async function testGitHub(env){
+  const {owner,repo,tag,token}=await githubConfig(env);
+  const repository=`${owner}/${repo}`;
+  const result={
+    ok:false,
+    github:false,
+    repository,
+    release:tag,
+    release_exists:false
+  };
+
+  if(!owner||!repo){
+    result.error='إعدادات GitHub ناقصة: GITHUB_OWNER و GITHUB_REPO.';
+    result.hint='تحقق من Cloudflare Runtime Variables.';
+    return result;
+  }
+  if(!token){
+    result.error='GITHUB_TOKEN غير مضبوط.';
+    result.hint='أضف GITHUB_TOKEN كـ Secret في Cloudflare Workers.';
+    return result;
+  }
+
+  try{
+    const release=await githubRequest(
+      env,
+      `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases/tags/${encodeURIComponent(tag)}`
+    );
+    result.ok=true;
+    result.github=true;
+    result.release_exists=true;
+    result.release_id=release.id;
+    result.message='تم الاتصال بـ GitHub والعثور على Release.';
+    return result;
+  }catch(e){
+    result.http_status=e.status||500;
+    result.github_response=e.githubResponse||{message:e.message};
+    result.error=e.message;
+    result.hint=githubErrorHint(e.status,e.message);
+    if(e.status===401)result.token_problem=true;
+    if(e.status===403)result.permission_problem=true;
+    if(e.status===404)result.repository_or_release_missing=true;
+    if(e.status===422)result.validation_error=true;
+    return result;
+  }
 }
 
 function parseIds(v){
@@ -127,9 +260,10 @@ export default {async fetch(request,env){
   }
   if(url.pathname.startsWith('/api/download/')&&request.method==='GET'){const id=Number(url.pathname.split('/').pop());const item=await env.DB.prepare("SELECT file_url FROM resources WHERE id=? AND status='published'").bind(id).first();if(!item?.file_url)return new Response('File link not found',{status:404});await env.DB.prepare('UPDATE resources SET downloads=downloads+1 WHERE id=?').bind(id).run();return Response.redirect(item.file_url,302)}
   if(url.pathname==='/api/admin/check'&&request.method==='GET')return admin(request,env,async()=>json({ok:true}));
+  if(url.pathname==='/api/admin/github/test'&&request.method==='GET')return admin(request,env,async()=>json(await testGitHub(env)));
   if(url.pathname==='/api/admin/logout'&&request.method==='POST')return admin(request,env,async()=>{const t=(request.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'').trim();await env.DB.prepare('DELETE FROM admin_sessions WHERE token_hash=?').bind(await sha256(t)).run();return json({ok:true})});
   if(url.pathname==='/api/admin/password'&&request.method==='POST')return admin(request,env,async()=>{const b=await request.json(),oldP=String(b.old_password||''),newP=String(b.new_password||'');if(newP.length<4)return bad('كلمة المرور الجديدة يجب ألا تقل عن 4 أحرف أو أرقام');if(await sha256(oldP)!==await getSetting(env,'admin_password_hash'))return bad('كلمة المرور الحالية غير صحيحة',401);await setSetting(env,'admin_password_hash',await sha256(newP));await env.DB.prepare('DELETE FROM admin_sessions').run();return json({ok:true})});
-  if(url.pathname==='/api/admin/settings'&&request.method==='GET')return admin(request,env,async()=>json({x:await getSetting(env,'social_x'),linkedin:await getSetting(env,'social_linkedin'),suggestion:await getSetting(env,'suggestion_url'),github_owner:await getSetting(env,'github_owner'),github_repo:await getSetting(env,'github_repo'),github_release_tag:await getSetting(env,'github_release_tag')}));
+  if(url.pathname==='/api/admin/settings'&&request.method==='GET')return admin(request,env,async()=>{const gh=await githubConfig(env);return json({x:await getSetting(env,'social_x'),linkedin:await getSetting(env,'social_linkedin'),suggestion:await getSetting(env,'suggestion_url'),github_owner:gh.owner,github_repo:gh.repo,github_release_tag:gh.tag})});
   if(url.pathname==='/api/admin/settings'&&request.method==='PATCH')return admin(request,env,async()=>{const b=await request.json();for(const [k,key] of [['x','social_x'],['linkedin','social_linkedin'],['suggestion','suggestion_url'],['github_owner','github_owner'],['github_repo','github_repo'],['github_release_tag','github_release_tag']])if(b[k]!==undefined)await setSetting(env,key,String(b[k]||'').trim());return json({ok:true})});
   if(url.pathname==='/api/admin/categories'&&request.method==='GET')return admin(request,env,async()=>{const {results}=await env.DB.prepare(`SELECT c.id,c.name,c.slug,c.icon,c.sort_order,c.is_visible,COUNT(DISTINCT CASE WHEN r.status!='archived' THEN r.id END) resource_count FROM categories c LEFT JOIN resource_categories rc ON rc.category_id=c.id LEFT JOIN resources r ON r.id=rc.resource_id GROUP BY c.id ORDER BY c.sort_order,c.name`).all();return json(results)});
   if(url.pathname==='/api/admin/categories'&&request.method==='POST')return admin(request,env,async()=>{const b=await request.json(),name=String(b.name||'').trim();if(!name)return bad('اسم القسم مطلوب');try{const r=await env.DB.prepare('INSERT INTO categories(name,slug,icon,sort_order,is_visible) VALUES(?,?,?,?,?)').bind(name,slugify(name)+'-'+Date.now(),String(b.icon||'▤'),Number(b.sort_order||0),b.is_visible===false?0:1).run();return json({ok:true,id:r.meta.last_row_id},201)}catch(e){return bad(e.message)}});

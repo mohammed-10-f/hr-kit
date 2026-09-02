@@ -29,3 +29,15 @@
 .file-drop{display:flex;align-items:center;gap:14px;padding:18px;border:1.5px dashed rgba(20,56,92,.25);border-radius:16px;background:#f8fafc;cursor:pointer;transition:.2s ease;margin-top:8px}.file-drop:hover{border-color:rgba(20,56,92,.55);background:#f2f7fb}.file-drop .upload-icon{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:#e8f0f7;color:#14385c;font-size:24px;font-weight:700}.file-drop b{display:block}.file-drop small{display:block;margin-top:4px;color:#64748b}.optional-label{font-size:11px;color:#94a3b8;font-weight:500;margin-inline-start:4px}.settings-section{margin-top:18px;padding-top:18px;border-top:1px solid #e7edf3}.settings-section h3{margin:0 0 6px}.settings-note{font-size:13px;color:#64748b;line-height:1.7;margin:0 0 14px}.settings-note code{direction:ltr;display:inline-block;background:#eef2f6;border-radius:5px;padding:1px 5px}.upload-field>small{display:block;margin-top:6px}
 
 .file-drop input[type='file']{display:none!important;width:0!important;height:0!important;position:absolute!important;opacity:0!important;pointer-events:none!important}.file-drop{min-height:82px;user-select:none}
+
+.github-status-card{grid-column:1/-1}
+.github-status-card .panel-head{align-items:flex-start}
+.github-status-badge{display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:0 12px;border-radius:999px;background:#f3f4f6;font-weight:700;white-space:nowrap}
+.github-status-badge.checking{opacity:.75}
+.github-status-badge.success{background:#e8f7ee}
+.github-status-badge.error{background:#fdecec}
+.github-status-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0}
+.github-status-details>div{padding:12px 14px;border:1px solid rgba(0,0,0,.08);border-radius:12px}
+.github-status-details small{display:block;opacity:.65;margin-bottom:4px}
+.github-status-details strong{display:block;overflow-wrap:anywhere}
+@media (max-width:640px){.github-status-details{grid-template-columns:1fr}.github-status-badge{font-size:12px;padding:0 9px}}
