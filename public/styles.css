@@ -291,3 +291,5 @@ footer{background:#fff;border-top:1px solid var(--line)}
 /* file reactions */
 .reactions{display:flex;align-items:center;gap:8px;margin-top:9px;min-height:30px;direction:ltr}.reaction-btn{border:1px solid #d9e5f3;background:#fff;color:#3976b8;border-radius:9px;padding:5px 9px;font-size:12px;line-height:1;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:.15s}.reaction-btn:hover,.reaction-btn.selected{background:#eaf3ff;border-color:#4b8fd1;color:#1768ad}.reaction-btn b{font-variant-numeric:tabular-nums;font-weight:700}.public-list-item .reactions{margin:0 8px;white-space:nowrap}
 
+
+.public-list-date{display:none!important}
