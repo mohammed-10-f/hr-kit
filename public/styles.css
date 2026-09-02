@@ -202,7 +202,7 @@ footer{background:#fff;border-top:1px solid var(--line)}
 .footer-links a{font-size:11px;color:#64758d;font-weight:600}
 .footer-links a:hover{color:var(--navy)}
 .footer-social{display:flex;gap:10px;color:#64758d;font-size:10px}
-.footer-bottom{border-top:1px solid #eef1f5;min-height:44px;display:flex;align-items:center;justify-content:space-between;color:#9aa6b5;font-size:9.5px;flex-wrap:wrap;gap:6px;padding-block:10px}
+.footer-bottom{border-top:1px solid #eef1f5;min-height:44px;display:flex;align-items:center;justify-content:space-between;color:#9aa6b5;font-size:9.5px;flex-wrap:wrap;gap:6px;padding-block:10px}.footer-contact{border-top:1px solid #f0f2f5;text-align:center;padding:10px 0 14px}.footer-contact a{font-size:10px;color:#718198;font-weight:600}.footer-contact a:hover{color:var(--navy)}
 
 /* ===== responsive ===== */
 @media (min-width:560px){
@@ -287,3 +287,6 @@ footer{background:#fff;border-top:1px solid var(--line)}
 .github-status-details small{display:block;opacity:.65;margin-bottom:4px}
 .github-status-details strong{display:block;overflow-wrap:anywhere}
 @media (max-width:640px){.github-status-details{grid-template-columns:1fr}.github-status-badge{font-size:12px;padding:0 9px}}
+
+/* file ratings */
+.rating{display:flex;align-items:center;gap:7px;margin-top:9px;min-height:22px}.rating-stars{display:inline-flex;direction:ltr;gap:1px}.rating-star{border:0;background:transparent;padding:0 1px;font-size:17px;line-height:1;color:#c6ced8;cursor:pointer;transition:transform .15s}.rating-star:hover{transform:scale(1.12)}.rating-star.active{color:#d59a18}.rating small{font-size:9px;color:#8996a8;white-space:nowrap}.rating.rated .rating-star{cursor:default}.public-list-item .rating{margin:0 8px;white-space:nowrap}.footer-contact{border-top:1px solid #f0f2f5;text-align:center;padding:10px 0 14px}.footer-contact span{font-size:10px;color:#718198;font-weight:600}
