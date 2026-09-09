@@ -219,41 +219,6 @@ async function githubStorageStats(env){
   const usedBytes=assets.reduce((sum,a)=>sum+Number(a.size||0),0);
   return {ok:true,release:release.tag_name||'files-v2',assets_count:assets.length,assets_limit:1000,assets_remaining:Math.max(0,1000-assets.length),used_bytes:usedBytes,used_gb:usedBytes/1024/1024/1024,max_file_bytes:2*1024*1024*1024,total_release_limit_bytes:null,total_release_limit_label:'غير محدود وفق حدود GitHub الحالية'};
 }
-
-async function githubOrphanAssets(env){
-  const {release,assets}=await listGitHubReleaseAssets(env);
-  const {results}=await env.DB.prepare('SELECT id,file_name,file_url,github_asset_id,status FROM resources').all();
-  const linkedIds=new Set();
-  const linkedNames=new Set();
-  const linkedUrls=new Set();
-  for(const r of (results||[])){
-    const id=Number(r.github_asset_id||0); if(id)linkedIds.add(id);
-    if(r.file_name)linkedNames.add(String(r.file_name));
-    if(r.file_url)linkedUrls.add(String(r.file_url));
-  }
-  const {owner,repo}=await githubConfig(env);
-  const prefix=`https://github.com/${owner}/${repo}/releases/download/`;
-  const orphans=assets.filter(a=>{
-    if(linkedIds.has(Number(a.id)))return false;
-    if(linkedUrls.has(String(a.browser_download_url||'')))return false;
-    if(String(a.browser_download_url||'').startsWith(prefix) && linkedNames.has(String(a.name||'')))return false;
-    return true;
-  }).map(a=>({id:Number(a.id),name:String(a.name||''),size:Number(a.size||0),created_at:a.created_at,updated_at:a.updated_at,browser_download_url:a.browser_download_url}));
-  return {ok:true,release:release.tag_name||'files-v2',orphans,orphan_count:orphans.length};
-}
-
-async function cleanupGitHubOrphans(env){
-  const {orphans}=await githubOrphanAssets(env);
-  const {owner}=await githubConfig(env);
-  const deleted=[]; const failed=[];
-  for(const a of orphans){
-    try{
-      await githubRequest(env,`/repos/${encodeURIComponent(owner)}/${encodeURIComponent((await githubConfig(env)).repo)}/releases/assets/${a.id}`,{method:'DELETE'});
-      deleted.push(a);
-    }catch(e){failed.push({asset:a,error:e.message||'تعذر الحذف'});}
-  }
-  return {ok:failed.length===0,deleted_count:deleted.length,failed_count:failed.length,deleted,failed};
-}
 async function deleteGitHubAssetForResource(env,resource){
   if(!resource?.file_url)return false;
   const url=String(resource.file_url);
@@ -356,8 +321,6 @@ export default {async fetch(request,env){
   if(url.pathname==='/api/admin/check'&&request.method==='GET')return admin(request,env,async()=>json({ok:true}));
   if(url.pathname==='/api/admin/github/test'&&request.method==='GET')return admin(request,env,async()=>json(await testGitHub(env)));
   if(url.pathname==='/api/admin/github/storage'&&request.method==='GET')return admin(request,env,async()=>json(await githubStorageStats(env)));
-  if(url.pathname==='/api/admin/github/orphans'&&request.method==='GET')return admin(request,env,async()=>json(await githubOrphanAssets(env)));
-  if(url.pathname==='/api/admin/github/orphans/cleanup'&&request.method==='POST')return admin(request,env,async()=>json(await cleanupGitHubOrphans(env)));
   if(url.pathname==='/api/admin/logout'&&request.method==='POST')return admin(request,env,async()=>{const t=(request.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'').trim();await env.DB.prepare('DELETE FROM admin_sessions WHERE token_hash=?').bind(await sha256(t)).run();return json({ok:true})});
   if(url.pathname==='/api/admin/password'&&request.method==='POST')return admin(request,env,async()=>{const b=await request.json(),oldP=String(b.old_password||''),newP=String(b.new_password||'');if(newP.length<8)return bad('كلمة المرور الجديدة يجب ألا تقل عن 8 أحرف أو أرقام');if(!(await verifyAdminPassword(env,oldP)))return bad('كلمة المرور الحالية غير صحيحة',401);await setAdminPassword(env,newP);await env.DB.prepare('DELETE FROM admin_sessions').run();return json({ok:true})});
   if(url.pathname==='/api/admin/settings'&&request.method==='GET')return admin(request,env,async()=>{const gh=await githubConfig(env);return json({x:await getSetting(env,'social_x'),linkedin:await getSetting(env,'social_linkedin'),suggestion:await getSetting(env,'suggestion_url'),email:await getSetting(env,'contact_email'),github_owner:gh.owner,github_repo:gh.repo,github_release_tag:gh.tag})});
