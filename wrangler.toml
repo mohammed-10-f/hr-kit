@@ -1,0 +1,18 @@
+name = "hr-kit"
+main = "src/index.js"
+compatibility_date = "2026-08-31"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "hr_kit_db"
+database_id = "153c149f-d470-4840-83f8-6bae7d053b9a"
+
+[vars]
+SITE_NAME = "HR Kit"
+GITHUB_OWNER = "mohammed-10-f"
+GITHUB_REPO = "hr-reference-files"
+GITHUB_RELEASE_TAG = "files-v2"
