@@ -53,7 +53,7 @@ async function ensureSchema(env){
   await env.DB.prepare('DELETE FROM admin_sessions WHERE expires_at<?').bind(Date.now()).run();
  })().catch(e=>{schemaReadyPromise=null;throw e}); return schemaReadyPromise;
 }
-const PBKDF2_ITERATIONS=310000;
+const PBKDF2_ITERATIONS=50000;
 async function passwordHash(password,saltBytes){const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveBits']);const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:saltBytes,iterations:PBKDF2_ITERATIONS,hash:'SHA-256'},key,256);return [...new Uint8Array(bits)].map(b=>b.toString(16).padStart(2,'0')).join('')}
 function bytesToHex(bytes){return [...bytes].map(b=>b.toString(16).padStart(2,'0')).join('')}
 function hexToBytes(hex){const out=new Uint8Array(hex.length/2);for(let i=0;i<out.length;i++)out[i]=parseInt(hex.slice(i*2,i*2+2),16);return out}
@@ -271,7 +271,7 @@ export default {async fetch(request,env){
  if(request.method==='OPTIONS')return cors(new Response(null,{status:204}),request); const url=new URL(request.url);
  try{await ensureSchema(env);
   if(url.pathname==='/api/settings'&&request.method==='GET')return cors(json({x:await getSetting(env,'social_x'),linkedin:await getSetting(env,'social_linkedin'),suggestion:await getSetting(env,'suggestion_url'),email:await getSetting(env,'contact_email'),github_owner:await getSetting(env,'github_owner'),github_repo:await getSetting(env,'github_repo'),github_release_tag:await getSetting(env,'github_release_tag')}),request);
-  if(url.pathname==='/api/admin/login'&&request.method==='POST'){const guard=await loginGuard(env,request);if(!guard.allowed)return cors(json({error:'تم إيقاف محاولات تسجيل الدخول مؤقتًا. حاول بعد قليل.'},429,{'Retry-After':String(guard.retryAfter||900)}),request);const b=await request.json();const p=String(b.password||'');if(!p)return cors(bad('كلمة المرور مطلوبة'),request);if(!(await verifyAdminPassword(env,p))){await recordFailedLogin(env,guard.key);return cors(bad('كلمة المرور غير صحيحة',401),request)}await clearLoginAttempts(env,guard.key);if((await getSetting(env,'admin_password_scheme'))!=='pbkdf2-sha256')await setAdminPassword(env,p);return cors(json({ok:true,token:await createSession(env)}),request)}
+  if(url.pathname==='/api/admin/login'&&request.method==='POST'){const guard=await loginGuard(env,request);if(!guard.allowed)return cors(json({error:'تم إيقاف محاولات تسجيل الدخول مؤقتًا. حاول بعد قليل.'},429,{'Retry-After':String(guard.retryAfter||900)}),request);const b=await request.json();const p=String(b.password||'');if(!p)return cors(bad('كلمة المرور مطلوبة'),request);if(!(await verifyAdminPassword(env,p))){await recordFailedLogin(env,guard.key);return cors(bad('كلمة المرور غير صحيحة',401),request)}await clearLoginAttempts(env,guard.key);return cors(json({ok:true,token:await createSession(env)}),request)}
   if(url.pathname==='/api/categories'&&request.method==='GET'){
    const {results}=await env.DB.prepare(`SELECT c.id,c.name,c.slug,c.icon,c.sort_order,COUNT(DISTINCT CASE WHEN r.status!='archived' THEN r.id END) resource_count FROM categories c LEFT JOIN resource_categories rc ON rc.category_id=c.id LEFT JOIN resources r ON r.id=rc.resource_id WHERE c.is_visible=1 GROUP BY c.id ORDER BY c.sort_order,c.name`).all();return cors(json(results),request);
   }
