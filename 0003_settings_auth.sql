@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS admin_sessions (
+  token_hash TEXT PRIMARY KEY,
+  expires_at INTEGER NOT NULL
+);
