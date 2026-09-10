@@ -68,9 +68,9 @@ function reactionMarkup(r){const likes=Number(r.reaction_likes||0),dislikes=Numb
 async function submitReaction(id,reaction,root,button){if(!root||root.dataset.busy==='1')return;root.dataset.busy='1';button?.setAttribute('aria-busy','true');try{const d=await getJSON('/api/resources/'+id+'/reaction',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reaction,visitor_id:visitorId()})});const like=root.querySelector('.like b'),dislike=root.querySelector('.dislike b');if(like)like.textContent=String(Number(d.likes||0));if(dislike)dislike.textContent=String(Number(d.dislikes||0));root.querySelectorAll('.reaction-btn').forEach(b=>b.classList.toggle('selected',b.dataset.reaction===d.my_reaction));}catch(e){console.error('Reaction failed',e);alert(e.message||'تعذر حفظ التقييم')}finally{root.dataset.busy='';button?.removeAttribute('aria-busy')}}
 function bindReactions(){if(window._hrReactionBound)return;window._hrReactionBound=true;document.addEventListener('click',e=>{const button=e.target.closest?.('.reaction-btn');if(!button)return;e.preventDefault();e.stopPropagation();const root=button.closest('[data-reaction-id]');if(!root)return;submitReaction(Number(root.dataset.reactionId),button.dataset.reaction,root,button)})}
 function trackViews(){const seen=window._hrkitViewedResources||(window._hrkitViewedResources=new Set());document.querySelectorAll('[data-view-id]').forEach(el=>{const id=Number(el.dataset.viewId);if(seen.has(id))return;const io=new IntersectionObserver(entries=>{if(entries.some(x=>x.isIntersecting)){seen.add(id);fetch('/api/resources/'+id+'/view',{method:'POST'}).catch(()=>{});io.disconnect()}},{threshold:.35});io.observe(el)})}
-function resourceCard(r,q){const [type,cls]=fileInfo(r);return `<article class="resource-card" data-view-id="${r.id}"><div class="file-icon ${cls}">${fileIconMark(cls)}</div><div class="resource-top"><span class="tag">${esc(r.category_names||'عام')}</span>${r.featured?`<span class="featured-mark" title="ملف مختار" aria-label="ملف مختار">${iconSvg('star')}</span>`:''}</div><h3>${highlight(r.title,q)}</h3><p>${highlight(r.description||'ملف من مرجع الموارد البشرية.',q)}</p><div class="meta">الإصدار ${esc(r.version||'1.0')} · ${Number(r.downloads||0).toLocaleString('ar-SA')} تحميل · ${Number(r.views||0).toLocaleString('ar-SA')} زيارة</div>${reactionMarkup(r)}<div class="resource-card-actions"><a class="download" href="/api/download/${encodeURIComponent(r.id)}"><span>تحميل الملف</span><span class="download-icon">${iconSvg('download')}</span></a><button type="button" class="report-btn" data-report="${r.id}">إبلاغ</button></div></article>`}
+function resourceCard(r,q){const [type,cls]=fileInfo(r);return `<article class="resource-card" data-view-id="${r.id}"><div class="file-icon ${cls}">${fileIconMark(cls)}</div><div class="resource-top"><span class="tag">${esc(r.category_names||'عام')}</span>${r.featured?`<span class="featured-mark" title="ملف مختار" aria-label="ملف مختار">${iconSvg('star')}</span>`:''}</div><h3>${highlight(r.title,q)}</h3><p>${highlight(r.description||'ملف من مرجع الموارد البشرية.',q)}</p><div class="meta">الإصدار ${esc(r.version||'1.0')} · ${Number(r.downloads||0).toLocaleString('ar-SA')} تحميل · ${Number(r.views||0).toLocaleString('ar-SA')} زيارة</div>${reactionMarkup(r)}<div class="resource-card-actions"><a class="download" href="/api/download/${encodeURIComponent(r.id)}"><span>تحميل الملف</span><span class="download-icon">${iconSvg('download')}</span></a></div></article>`}
 
-function publicList(r,q){const [type,cls]=fileInfo(r);return `<article class="public-list-item" data-view-id="${r.id}"><div class="file-icon ${cls}">${fileIconMark(cls)}</div><div class="public-list-main"><strong>${highlight(r.title,q)}</strong><small>${esc(r.category_names||'عام')} · الإصدار ${esc(r.version||'1.0')}</small></div>${reactionMarkup(r)}<div class="list-actions"><a class="list-download" href="/api/download/${encodeURIComponent(r.id)}" aria-label="تحميل ${esc(r.title)}"><span>تحميل</span><span class="download-icon">${iconSvg('download')}</span></a><button type="button" class="report-btn" data-report="${r.id}">إبلاغ</button></div></article>`}
+function publicList(r,q){const [type,cls]=fileInfo(r);return `<article class="public-list-item" data-view-id="${r.id}"><div class="file-icon ${cls}">${fileIconMark(cls)}</div><div class="public-list-main"><strong>${highlight(r.title,q)}</strong><small>${esc(r.category_names||'عام')} · الإصدار ${esc(r.version||'1.0')}</small></div>${reactionMarkup(r)}<div class="list-actions"><a class="list-download" href="/api/download/${encodeURIComponent(r.id)}" aria-label="تحميل ${esc(r.title)}"><span>تحميل</span><span class="download-icon">${iconSvg('download')}</span></a></div></article>`}
 
 async function loadResources(){
  const q=$('#search').value.trim();
@@ -85,26 +85,7 @@ async function loadResources(){
  firstLoad=false;
 }
 
-let reportTargetId=0;
-function openReportModal(id){
- reportTargetId=Number(id||0); if(!reportTargetId)return;
- const m=$('#report-modal'); if(!m)return;
- $('#report-reason').value=''; $('#report-details').value=''; $('#report-message').textContent=''; $('#report-message').className='report-message';
- m.classList.remove('hidden'); document.body.classList.add('no-scroll'); setTimeout(()=>$('#report-reason')?.focus(),60);
-}
-function closeReportModal(){const m=$('#report-modal');if(!m)return;m.classList.add('hidden');document.body.classList.remove('no-scroll');reportTargetId=0}
-async function reportResource(){
- const reason=$('#report-reason')?.value.trim(); const details=$('#report-details')?.value.trim()||''; const msg=$('#report-message'); const submit=$('#report-submit');
- if(!reason){msg.textContent='يرجى اختيار سبب الإبلاغ.';msg.className='report-message error';$('#report-reason')?.focus();return}
- submit.disabled=true; submit.setAttribute('aria-busy','true'); msg.textContent='';
- try{const r=await fetch('/api/resources/'+reportTargetId+'/report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason,details})});if(!r.ok)throw new Error('تعذر إرسال البلاغ');
-  msg.textContent='تم إرسال البلاغ بنجاح، شكرًا لك.';msg.className='report-message success';
-  setTimeout(closeReportModal,900);
- }catch(e){msg.textContent=e.message||'تعذر إرسال البلاغ.';msg.className='report-message error';}finally{submit.disabled=false;submit.removeAttribute('aria-busy')}
-}
-document.addEventListener('click',e=>{const r=e.target.closest?.('[data-report]');if(r){e.preventDefault();openReportModal(Number(r.dataset.report));}});
-$('#report-close')?.addEventListener('click',closeReportModal);$('#report-cancel')?.addEventListener('click',closeReportModal);$('#report-backdrop')?.addEventListener('click',closeReportModal);$('#report-form')?.addEventListener('submit',e=>{e.preventDefault();reportResource()});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#report-modal')?.classList.contains('hidden'))closeReportModal()});;
+;
 function openNav(){$('#main-nav').classList.add('open');$('#nav-toggle').setAttribute('aria-expanded','true');$('#nav-backdrop').hidden=false;document.body.classList.add('no-scroll')}
 function closeNav(){$('#main-nav').classList.remove('open');$('#nav-toggle').setAttribute('aria-expanded','false');$('#nav-backdrop').hidden=true;document.body.classList.remove('no-scroll')}
 
