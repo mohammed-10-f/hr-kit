@@ -85,8 +85,41 @@ async function loadResources(){
  firstLoad=false;
 }
 
-async function reportResource(id){const reason=prompt('سبب الإبلاغ؟','الرابط لا يعمل');if(reason===null)return;const details=prompt('تفاصيل إضافية (اختياري):','')||'';try{const r=await fetch('/api/resources/'+id+'/report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason,details})});if(!r.ok)throw new Error('تعذر إرسال البلاغ');alert('تم إرسال البلاغ، شكرًا لك.')}catch(e){alert(e.message)}}
-document.addEventListener('click',e=>{const r=e.target.closest?.('[data-report]');if(r){e.preventDefault();reportResource(Number(r.dataset.report))}});
+let reportModal=null;
+function ensureReportModal(){
+ if(reportModal)return reportModal;
+ const wrap=document.createElement('div');
+ wrap.className='report-modal hidden';
+ wrap.innerHTML=`<div class="report-backdrop" data-report-close></div><div class="report-dialog" role="dialog" aria-modal="true" aria-labelledby="report-title"><button type="button" class="report-close" data-report-close aria-label="إغلاق">×</button><div class="report-head"><div class="report-icon">!</div><div><span class="section-kicker">إبلاغ</span><h2 id="report-title">الإبلاغ عن ملف</h2><p>ساعدنا في تحسين المكتبة بالإبلاغ عن أي مشكلة.</p></div></div><form id="report-form"><label>سبب الإبلاغ<select id="report-reason" required><option value="">اختر سببًا</option><option value="الرابط لا يعمل">الرابط لا يعمل</option><option value="المحتوى غير صحيح">المحتوى غير صحيح</option><option value="الملف مكرر">الملف مكرر</option><option value="مشكلة في الملف">مشكلة في الملف</option><option value="أخرى">أخرى</option></select></label><label>تفاصيل إضافية <span>(اختياري)</span><textarea id="report-details" rows="4" maxlength="1000" placeholder="اكتب تفاصيل المشكلة إن وجدت..."></textarea><div class="report-form-actions"><button type="button" class="report-cancel" data-report-close>إلغاء</button><button type="submit" class="report-submit">إرسال البلاغ</button></div></form></div>`;
+ document.body.appendChild(wrap); reportModal=wrap;
+ wrap.addEventListener('click',e=>{if(e.target.closest('[data-report-close]'))closeReportModal()});
+ wrap.querySelector('#report-form').addEventListener('submit',submitReport);
+ return wrap;
+}
+let activeReportId=null;
+function openReportModal(id){
+ const m=ensureReportModal(); activeReportId=id;
+ m.classList.remove('hidden'); document.body.classList.add('no-scroll');
+ m.querySelector('#report-form').reset(); setTimeout(()=>m.querySelector('#report-reason').focus(),30);
+}
+function closeReportModal(){if(!reportModal)return;reportModal.classList.add('hidden');document.body.classList.remove('no-scroll');activeReportId=null}
+async function submitReport(e){
+ e.preventDefault(); const m=reportModal, submit=m.querySelector('.report-submit');
+ const reason=m.querySelector('#report-reason').value, details=m.querySelector('#report-details').value.trim();
+ if(!activeReportId||!reason)return;
+ submit.disabled=true; submit.textContent='جارٍ الإرسال...';
+ try{
+  const r=await fetch('/api/resources/'+activeReportId+'/report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason,details})});
+  if(!r.ok)throw new Error('تعذر إرسال البلاغ، حاول مرة أخرى.');
+  closeReportModal(); showToast('تم إرسال البلاغ، شكرًا لك.');
+ }catch(err){showToast(err.message,true)}finally{submit.disabled=false;submit.textContent='إرسال البلاغ'}
+}
+function showToast(message,error=false){
+ let t=document.querySelector('.site-toast'); if(!t){t=document.createElement('div');t.className='site-toast';document.body.appendChild(t)}
+ t.textContent=message; t.classList.toggle('error',error); t.classList.add('show'); clearTimeout(t._timer); t._timer=setTimeout(()=>t.classList.remove('show'),3200);
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeReportModal()});
+document.addEventListener('click',e=>{const r=e.target.closest?.('[data-report]');if(r){e.preventDefault();openReportModal(Number(r.dataset.report))}});
 function openNav(){$('#main-nav').classList.add('open');$('#nav-toggle').setAttribute('aria-expanded','true');$('#nav-backdrop').hidden=false;document.body.classList.add('no-scroll')}
 function closeNav(){$('#main-nav').classList.remove('open');$('#nav-toggle').setAttribute('aria-expanded','false');$('#nav-backdrop').hidden=true;document.body.classList.remove('no-scroll')}
 
