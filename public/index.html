@@ -85,5 +85,18 @@
 <div class="container footer-bottom"><span>© <span id="year"></span> HR Reference</span><span>تطوير محمد الروقي</span><span id="footer-email" class="footer-email" hidden></span><span class="legal-links"><a href="/privacy">الخصوصية</a><a href="/terms">الشروط</a><a href="/disclaimer">إخلاء المسؤولية</a></span></div>
 </footer>
 
+<div id="report-modal" class="report-modal hidden" role="dialog" aria-modal="true" aria-labelledby="report-modal-title">
+<div id="report-backdrop" class="report-backdrop"></div>
+<div class="report-dialog">
+ <div class="report-head"><div><span class="section-kicker">مساعدة</span><h2 id="report-modal-title">الإبلاغ عن ملف</h2><p>ساعدنا في تحسين المكتبة بإبلاغنا عن أي مشكلة.</p></div><button id="report-close" class="report-close" type="button" aria-label="إغلاق">×</button></div>
+ <form id="report-form" class="report-form">
+  <label for="report-reason">سبب الإبلاغ <span>*</span></label>
+  <select id="report-reason" required><option value="" selected disabled>اختر سبب الإبلاغ</option><option value="الرابط لا يعمل">الرابط لا يعمل</option><option value="المحتوى غير صحيح">المحتوى غير صحيح</option><option value="الملف مكرر">الملف مكرر</option><option value="مشكلة في الملف">مشكلة في الملف</option><option value="أخرى">أخرى</option></select>
+  <label for="report-details">تفاصيل إضافية <small>اختياري</small></label>
+  <textarea id="report-details" rows="4" maxlength="1000" placeholder="اكتب تفاصيل المشكلة إن وجدت..."></textarea>
+  <div id="report-message" class="report-message" aria-live="polite"></div>
+  <div class="report-actions"><button id="report-cancel" class="report-cancel" type="button">إلغاء</button><button id="report-submit" class="report-submit" type="submit">إرسال البلاغ</button></div>
+ </form>
+</div></div>
 <script src="/app.js?v=6"></script>
 </body></html>
