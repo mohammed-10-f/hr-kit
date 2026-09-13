@@ -84,7 +84,7 @@ function updateLibraryHeading(q){
  const title=$('#results-title'),count=$('#results-count');
  if(activeCategory){const cat=allCategories.find(c=>c.slug===activeCategory);title.textContent=cat?.name||'ملفات القسم';count.textContent=lastResources.length?`${lastResources.length.toLocaleString('ar-SA')} ملف${q?' مطابق للبحث':''}`:'لا توجد ملفات في هذا القسم';}
  else if(q){title.textContent='نتائج البحث';count.textContent=lastResources.length?`${lastResources.length.toLocaleString('ar-SA')} ملف مطابق`:'لم يتم العثور على ملفات';}
- else{title.textContent='أحدث الملفات';count.textContent=`${lastResources.length.toLocaleString('ar-SA')} ملف`}
+ else{title.textContent='الملفات';count.textContent=`${lastResources.length.toLocaleString('ar-SA')} ملف`}
 }
 
 function visitorId(){let id='';try{id=localStorage.getItem('hr_reference_visitor_id')||''}catch{}if(!id){try{id=(crypto&&typeof crypto.randomUUID==='function')?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2);localStorage.setItem('hr_reference_visitor_id',id)}catch{id=Date.now()+'-'+Math.random().toString(36).slice(2)}}return id}
@@ -104,8 +104,6 @@ async function loadResources(){
  $('#search').placeholder=activeCategory?(allCategories.find(c=>c.slug===activeCategory)?.name?`ابحث داخل ${allCategories.find(c=>c.slug===activeCategory).name}...`:'ابحث داخل القسم...'):'ابحث عن نموذج، سياسة، لائحة، ملف...';
  $('#resources-list').innerHTML=lastResources.map(r=>publicList(r,q)).join('');
  $('#empty').classList.toggle('hidden',lastResources.length>0);
- const showFeatured=!q&&!activeCategory;
- if(showFeatured){const featured=STATIC_RESOURCES.filter(r=>r.featured);$('#featured').innerHTML=featured.map(r=>resourceCard(r,'')).join('');$('#featured-section').classList.toggle('hidden',featured.length===0)}else $('#featured-section').classList.add('hidden');
  firstLoad=false;
 }
 
@@ -125,7 +123,6 @@ $('#header-search-btn').addEventListener('click',()=>{document.querySelector('#t
 $('#search-submit').addEventListener('click',()=>{const q=$('#search').value.trim();if(q)loadResources();else $('#search').focus();});
 $('#cta-search').addEventListener('click',()=>$('#search').focus());
 $('#cta-explore').addEventListener('click',()=>$('#categories').scrollIntoView({behavior:'smooth',block:'start'}));
-$('#featured-view-all').addEventListener('click',()=>$('#resources').scrollIntoView({behavior:'smooth',block:'start'}));
 
 let lastScroll=0;
 window.addEventListener('scroll',()=>{const y=window.scrollY;document.querySelector('.site-header').classList.toggle('scrolled',y>10);lastScroll=y},{passive:true});
