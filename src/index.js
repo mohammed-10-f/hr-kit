@@ -403,27 +403,10 @@ export default {async fetch(request,env){
  // Keeping this route before ensureSchema prevents the form page from hanging at the engine-loader stage.
  if((url.pathname==='/api/pdf-engine/pdfjs'||url.pathname==='/api/pdf-engine/pdf-lib')&&request.method==='GET'){
   const isLib=url.pathname.endsWith('pdf-lib');
-  const sources=isLib?[
-   'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js',
-   'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js'
-  ]:[
-   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
-   'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js'
-  ];
-  for(const srcUrl of sources){
-   const ac=new AbortController(); const timer=setTimeout(()=>ac.abort(),5000);
-   try{
-    const src=await fetch(srcUrl,{signal:ac.signal});
-    if(src.ok){
-     const h=new Headers();
-     h.set('content-type','application/javascript; charset=utf-8');
-     h.set('cache-control','public, max-age=86400, stale-while-revalidate=604800');
-     h.set('x-pdf-engine','ready');
-     return new Response(src.body,{status:200,headers:h});
-    }
-   }catch(e){} finally{clearTimeout(timer)}
-  }
-  return cors(bad('تعذر تحميل محرك PDF من خادم الموقع.',503),request);
+  const target=isLib
+    ? 'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js'
+    : 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  return Response.redirect(target,302);
  }
  try{await ensureSchema(env);
   if(url.pathname==='/api/settings'&&request.method==='GET')return cors(json({x:await getSetting(env,'social_x'),linkedin:await getSetting(env,'social_linkedin'),suggestion:await getSetting(env,'suggestion_url'),email:await getSetting(env,'contact_email'),title:await getSetting(env,'site_title'),description:await getSetting(env,'site_description'),keywords:await getSetting(env,'seo_keywords'),og_image:await getSetting(env,'og_image'),twitter_card:await getSetting(env,'twitter_card'),canonical:await getSetting(env,'canonical_url'),robots:await getSetting(env,'robots'),favicon:await getSetting(env,'favicon_url'),home:{hero:await getSetting(env,'home_hero')==='1',search:await getSetting(env,'home_search')==='1',categories:await getSetting(env,'home_categories')==='1',latest:await getSetting(env,'home_latest')==='1',featured:await getSetting(env,'home_featured')==='1',suggestion:await getSetting(env,'home_suggestion')==='1'}}),request);

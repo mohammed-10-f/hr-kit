@@ -8,10 +8,11 @@ async function loadExternalScript(urls, label){
       await new Promise((resolve,reject)=>{
         const script=document.createElement('script');
         let done=false;
-        const timer=setTimeout(()=>{if(done)return;done=true;script.remove();reject(new Error('انتهت مهلة تحميل '+label));},8000);
+        const timer=setTimeout(()=>{if(done)return;done=true;script.remove();reject(new Error('انتهت مهلة تحميل '+label));},6000);
         script.onload=()=>{if(done)return;done=true;clearTimeout(timer);resolve()};
         script.onerror=()=>{if(done)return;done=true;clearTimeout(timer);script.remove();reject(new Error('تعذر تحميل '+label))};
-        script.src=url;script.async=true;document.head.appendChild(script);
+        script.src=url+(url.includes('?')?'&':'?')+'v=20260913fix3';
+        script.async=true;document.head.appendChild(script);
       });
       if(label==='PDF.js' && window.pdfjsLib) return window.pdfjsLib;
       if(label==='PDF-Lib' && window.PDFLib) return window.PDFLib;
@@ -22,11 +23,7 @@ async function loadExternalScript(urls, label){
 }
 async function ensurePdfJs(){
   if(window.pdfjsLib) return window.pdfjsLib;
-  const lib=await loadExternalScript([
-    '/api/pdf-engine/pdfjs',
-    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
-    'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js'
-  ],'PDF.js');
+  const lib=await loadExternalScript(['/api/pdf-engine/pdfjs','https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js','https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js'],'PDF.js');
   if(lib.GlobalWorkerOptions) lib.GlobalWorkerOptions.workerSrc='';
   return lib;
 }
