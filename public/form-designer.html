@@ -63,59 +63,24 @@
 <div id="toast" class="fb-toast"></div>
 <script>
 (function(){
-  const PDFJS_SOURCES=[
+  const urls=[
     'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',
-    'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
+    'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js'
   ];
-  const PDFJS_WORKERS=[
-    'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js',
-    'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
-  ];
-  const PDFLIB_SOURCES=[
-    'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js',
-    'https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js'
-  ];
-  const workspaceId = location.pathname.includes('form-designer') ? 'pdf-workspace' : 'fill-workspace';
-  const show=(msg,detail='')=>{
-    const el=document.getElementById(workspaceId);
-    if(el) el.innerHTML='<div class="loading-state">'+msg+(detail?'<br><small>'+detail+'</small>':'')+'</div>';
-  };
-  const loadScript=(urls,label,timeout=9000)=>new Promise((resolve,reject)=>{
-    let i=0, last='';
-    const next=()=>{
-      if(i>=urls.length){reject(new Error('تعذر تحميل '+label+' من مصادر الإنترنت.'));return;}
-      const url=urls[i++], s=document.createElement('script'), timer=setTimeout(()=>{s.remove();last='timeout';next()},timeout);
-      s.async=false;
-      s.onload=()=>{clearTimeout(timer);resolve(url)};
-      s.onerror=()=>{clearTimeout(timer);last='error';s.remove();next()};
-      s.src=url; document.head.appendChild(s);
-    };
-    next();
-  });
-  async function boot(){
-    try{
-      show('تهيئة محرك PDF…','يتم تحميل محرك عرض PDF');
-      const pdfjsUrl=await loadScript(PDFJS_SOURCES,'محرك PDF');
-      if(!window.pdfjsLib) throw new Error('تم تحميل المصدر لكن محرك PDF غير متاح');
-      const workerIndex=Math.max(0,PDFJS_SOURCES.indexOf(pdfjsUrl));
-      pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS_WORKERS[workerIndex]||PDFJS_WORKERS[0];
-      if(location.pathname.includes('form-fill')){
-        show('تهيئة محرك إنشاء PDF…','يتم تحميل مكتبة إنشاء الملف النهائي');
-        await loadScript(PDFLIB_SOURCES,'مكتبة إنشاء PDF');
-        if(!window.PDFLib) throw new Error('مكتبة إنشاء PDF غير متاحة');
-        const s=document.createElement('script');s.src='/form-filler.js';s.onload=()=>{};s.onerror=()=>show('تعذر تشغيل نموذج التعبئة','تحقق من نشر ملف form-filler.js ثم أعد المحاولة.');document.body.appendChild(s);
-      }else{
-        const s=document.createElement('script');s.src='/form-designer.js';s.onload=()=>{};s.onerror=()=>show('تعذر تشغيل مصمم النماذج','تحقق من نشر ملف form-designer.js ثم أعد المحاولة.');document.body.appendChild(s);
-      }
-    }catch(e){
-      show('تعذر تشغيل محرك PDF',e.message+' إذا استمرت المشكلة بعد إعادة المحاولة فالمشكلة في اتصال المتصفح بمصادر مكتبات PDF.');
-      console.error(e);
-    }
+  const status=document.querySelector('.loading-state');
+  function fail(){ if(status) status.innerHTML='تعذر تحميل محرك قراءة PDF.<br><small>تحقق من اتصال الشبكة ثم أعد المحاولة.</small>'; }
+  function load(i){
+    if(i>=urls.length){fail();return;}
+    const sc=document.createElement('script'); sc.src=urls[i]; sc.async=true;
+    const timer=setTimeout(()=>{sc.remove();load(i+1)},8000);
+    sc.onload=()=>{clearTimeout(timer); if(window.pdfjsLib){
+      window.__PDF_READY__=true;
+      const app=document.createElement('script'); app.src='/form-designer.js'; document.body.appendChild(app);
+    } else {sc.remove();load(i+1)}};
+    sc.onerror=()=>{clearTimeout(timer);sc.remove();load(i+1)};
+    document.head.appendChild(sc);
   }
-  boot();
+  load(0);
 })();
 </script>
 </body>

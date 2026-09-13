@@ -91,7 +91,7 @@ async function loadPdf(){
   try{bytes=await fetchPdfBytes(directUrl,{mode:'cors'},20000)}
   catch(e){$('#pdf-workspace').innerHTML='<div class="loading-state">2/3 — جاري استخدام مسار التحميل الآمن…<br><small>المسار المباشر لم يستجب، تتم المحاولة عبر الموقع</small></div>';bytes=await fetchPdfBytes('/api/admin/forms/'+resourceId+'/source',{headers:{Authorization:'Bearer '+token}},20000)}
   $('#pdf-workspace').innerHTML='<div class="loading-state">3/3 — جاري تجهيز الصفحة الأولى…<br><small>يتم تحليل ملف PDF</small></div>';
-  state.pdf=await pdfjsLib.getDocument({data:new Uint8Array(bytes),disableAutoFetch:true,disableStream:true}).promise;
+  state.pdf=await pdfjsLib.getDocument({data:new Uint8Array(bytes),disableAutoFetch:true,disableStream:true,disableRange:true,disableWorker:true}).promise;
   if(!state.pdf.numPages)throw new Error('ملف PDF لا يحتوي على صفحات');
   state.pages=new Array(state.pdf.numPages);state.pagePromises={};renderPageList();await renderCurrentPage();
   for(let i=1;i<state.pdf.numPages;i++)loadPage(i).catch(()=>{});

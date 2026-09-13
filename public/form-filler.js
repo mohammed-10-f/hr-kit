@@ -54,7 +54,7 @@ async function loadPdf(){
    bytes=await fetchArrayBufferWithTimeout('/api/forms/'+resourceId+'/source',{},20000);
   }
   $('#fill-workspace').innerHTML='<div class="loading-state">3/3 — جاري تجهيز الصفحة الأولى…<br><small>يتم تحليل ملف PDF</small></div>';
-  state.pdf=await pdfjsLib.getDocument({data:new Uint8Array(bytes),disableAutoFetch:true,disableStream:true}).promise;
+  state.pdf=await pdfjsLib.getDocument({data:new Uint8Array(bytes),disableAutoFetch:true,disableStream:true,disableRange:true,disableWorker:true}).promise;
   if(!state.pdf.numPages)throw new Error('ملف PDF لا يحتوي على صفحات');
   state.pages=new Array(state.pdf.numPages);state.pagePromises={};
   const first=await loadPage(0);
@@ -66,10 +66,19 @@ async function loadPdf(){
 function normalizeDigits(v){return String(v||'').replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))}
 function validateField(f){const v=getValue(f);if(f.required&&(!String(v).trim()||v===false))return `الحقل "${f.name}" مطلوب`;if(v===false||v==='')return '';if(f.min_length&&String(v).length<f.min_length)return `الحقل "${f.name}" يجب ألا يقل عن ${f.min_length} أحرف`;if(f.max_length&&String(v).length>f.max_length)return `الحقل "${f.name}" تجاوز الحد المسموح`;if(f.type==='number'&&!/^\d+$/.test(normalizeDigits(v)))return `الحقل "${f.name}" يقبل الأرقام فقط`;if(f.type==='date'&&!/^\d{4}-\d{2}-\d{2}$/.test(v))return `التاريخ في "${f.name}" غير صحيح`;return ''}
 function validateAll(){document.querySelectorAll('.fill-field').forEach(e=>e.classList.remove('invalid'));for(const f of state.data.fields){const err=validateField(f);if(err){const el=document.querySelector(`[data-field-id="${CSS.escape(fieldKey(f))}"]`);el?.classList.add('invalid');el?.scrollIntoView({behavior:'smooth',block:'center'});el?.focus?.();return err}}return ''}
+async function ensurePdfLib(){
+ if(window.PDFLib)return window.PDFLib;
+ const urls=['https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js','https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js'];
+ for(const url of urls){
+  try{await new Promise((resolve,reject)=>{const sc=document.createElement('script');sc.src=url;sc.async=true;const t=setTimeout(()=>{sc.remove();reject(new Error('timeout'))},8000);sc.onload=()=>{clearTimeout(t);window.PDFLib?resolve():reject(new Error('library unavailable'))};sc.onerror=()=>{clearTimeout(t);sc.remove();reject(new Error('load failed'))};document.head.appendChild(sc)});if(window.PDFLib)return window.PDFLib}catch(e){}
+ }
+ throw new Error('تعذر تحميل محرك إنشاء ملف PDF. أعد المحاولة.');
+}
+
 async function generatePdf(){
  const err=validateAll();if(err){toast(err,'error');return}
  const btn=$('#generate-btn');btn.disabled=true;btn.textContent='جاري إنشاء PDF…';
- try{await document.fonts?.ready;const bytes=await (async()=>{try{return await fetchArrayBufferWithTimeout(String(state.data.resource.file_url||''),{mode:'cors'},20000)}catch(e){return await fetchArrayBufferWithTimeout('/api/forms/'+resourceId+'/source',{},20000)}})();const doc=await PDFLib.PDFDocument.load(bytes);const pages=doc.getPages();
+ try{await ensurePdfLib();await document.fonts?.ready;const bytes=await (async()=>{try{return await fetchArrayBufferWithTimeout(String(state.data.resource.file_url||''),{mode:'cors'},20000)}catch(e){return await fetchArrayBufferWithTimeout('/api/forms/'+resourceId+'/source',{},20000)}})();const doc=await PDFLib.PDFDocument.load(bytes);const pages=doc.getPages();
  for(const f of state.data.fields){const value=f.type==='static'?f.static_value:getValue(f);if(f.type==='signature'||value===''||value===false)continue;const page=pages[f.page-1];if(!page)continue;let text=displayValue(f,value);if(f.type==='checkbox')text='✓';const c=makeTextCanvas(text,f,false);const img=await doc.embedPng(c.toDataURL('image/png'));const ph=page.getHeight();page.drawImage(img,{x:f.x,y:ph-f.y-f.height,width:f.width,height:f.height})}
  const out=await doc.save();const blob=new Blob([out],{type:'application/pdf'}),url=URL.createObjectURL(blob),a=document.createElement('a');const base=(state.data.resource.file_name||state.data.resource.title||'form').replace(/\.pdf$/i,'').replace(/[\\/:*?"<>|]+/g,'-');a.href=url;a.download=base+'-filled-'+Date.now()+'.pdf';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);toast('تم إنشاء النموذج بنجاح','success')
  }catch(e){console.error(e);toast('تعذر إنشاء PDF. حاول مرة أخرى.','error')}finally{btn.disabled=false;btn.textContent='إنشاء النموذج'}}
