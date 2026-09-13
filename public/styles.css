@@ -685,3 +685,99 @@ footer{
   .list-download{height:38px;font-size:10px;}
   .admin-resource .resource-actions{grid-template-columns:repeat(2,minmax(0,1fr));}
 }
+
+/* ===== v9 public UI: tighter spacing + single-interface mobile header ===== */
+@media (min-width:861px){
+  .hero{padding-block:38px 44px;}
+  .section{padding-top:38px;}
+  .section-heading{margin-bottom:16px;}
+}
+
+@media (min-width:1080px){
+  /* Keep all primary categories on one row so the section does not leave a lone card. */
+  .category-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;}
+  .category-card{min-width:0;}
+}
+
+/* On phones the public site is intentionally one visible interface: no hamburger/menu drawer. */
+@media (max-width:859.98px){
+  .nav-toggle{display:none!important;}
+  .nav-backdrop{display:none!important;}
+  .site-header{height:58px;}
+  .header-inner{
+    height:58px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    width:calc(100% - 16px);
+  }
+  .brand{
+    order:1;
+    width:58px;
+    min-width:58px;
+    height:48px;
+    padding:0;
+  }
+  .brand img{width:58px;height:46px;}
+  .main-nav{
+    order:2;
+    position:static!important;
+    inset:auto!important;
+    transform:none!important;
+    width:auto!important;
+    height:40px!important;
+    flex:1 1 auto;
+    min-width:0;
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    gap:2px;
+    padding:0!important;
+    overflow-x:auto;
+    overflow-y:hidden;
+    scrollbar-width:none;
+    box-shadow:none!important;
+    background:transparent!important;
+  }
+  .main-nav::-webkit-scrollbar{display:none;}
+  .main-nav a{
+    flex:0 0 auto;
+    width:auto!important;
+    height:34px!important;
+    padding:0 7px!important;
+    border:0!important;
+    border-radius:8px;
+    font-size:10px;
+    white-space:nowrap;
+  }
+  .main-nav a.active:after{display:none!important;}
+  .main-nav a.active{background:#f1f5fa;color:var(--navy);}
+  .header-actions{
+    order:3;
+    margin:0!important;
+    gap:5px;
+    min-height:36px;
+    flex:0 0 auto;
+  }
+  .header-actions .social-btn{display:none!important;}
+  .header-actions .icon-btn{width:34px;height:34px;min-width:34px;}
+}
+
+@media (max-width:700px){
+  .hero{padding-block:34px 38px;min-height:0;}
+  .hero-inner{min-height:0;}
+  .hero h1{font-size:32px;}
+  .hero p{margin-bottom:20px;}
+  .hero-ctas{margin-top:16px;}
+  .section{padding-top:28px;}
+  .section-heading{margin-bottom:12px;}
+}
+
+@media (max-width:480px){
+  .hero{padding-block:30px 32px;}
+  .hero h1{font-size:29px;}
+  .hero p{font-size:12px;margin-bottom:17px;}
+  .hero-ctas{margin-top:13px;gap:8px;}
+  .section{padding-top:24px;}
+}
