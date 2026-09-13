@@ -70,10 +70,18 @@ $('#undo-btn').onclick=undo;$('#redo-btn').onclick=redo;
 $('#zoom-in').onclick=()=>{state.scale=Math.min(2.5,state.scale+.1);renderCurrentPage();$('#zoom-value').textContent=Math.round(state.scale*100)+'%'};
 $('#zoom-out').onclick=()=>{state.scale=Math.max(.55,state.scale-.1);renderCurrentPage();$('#zoom-value').textContent=Math.round(state.scale*100)+'%'};
 async function loadPdf(){
- const loading=pdfjsLib.getDocument({url:'/api/admin/forms/'+resourceId+'/source',httpHeaders:{Authorization:'Bearer '+token},withCredentials:false,disableAutoFetch:false,disableStream:false,rangeChunkSize:65536});state.pdf=await loading.promise;
- state.pages=new Array(state.pdf.numPages);state.pagePromises={};renderPageList();await renderCurrentPage();
- // Render remaining pages in the background so the first page is usable immediately.
- for(let i=1;i<state.pdf.numPages;i++)loadPage(i).catch(()=>{});
+ const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),30000);
+ try{
+  $('#pdf-workspace').innerHTML='<div class="loading-state">جاري تحميل الـPDF…<br><small>يتم تجهيز الملف، يرجى الانتظار</small></div>';
+  const response=await fetch('/api/admin/forms/'+resourceId+'/source',{headers:{Authorization:'Bearer '+token},credentials:'same-origin',cache:'force-cache',signal:controller.signal});
+  if(!response.ok)throw new Error('تعذر تحميل ملف PDF الأصلي ('+response.status+')');
+  const bytes=await response.arrayBuffer();
+  if(!bytes.byteLength)throw new Error('ملف PDF فارغ أو غير صالح');
+  state.pdf=await pdfjsLib.getDocument({data:new Uint8Array(bytes),disableAutoFetch:true,disableStream:true}).promise;
+  state.pages=new Array(state.pdf.numPages);state.pagePromises={};renderPageList();await renderCurrentPage();
+  for(let i=1;i<state.pdf.numPages;i++)loadPage(i).catch(()=>{});
+ }catch(e){if(e.name==='AbortError')throw new Error('استغرق تحميل ملف PDF أكثر من 30 ثانية. تحقق من الملف أو أعد المحاولة.');throw e}
+ finally{clearTimeout(timer)}
 }
 async function load(){
  try{const d=await api('/api/admin/forms/'+resourceId);state.resource=d.resource;state.form=d.form;state.fields=(d.fields||[]).map(f=>({...f,id:String(f.id),options:f.options||[],settings:f.settings||{}}));$('#form-title').textContent=state.resource.title;state.history=[snapshot()];updateHistoryButtons();await loadPdf();setSave('لم يتم تعديل شيء');}
