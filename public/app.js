@@ -1,30 +1,6 @@
 const $=s=>document.querySelector(s);
 let activeCategory="",allCategories=[],lastResources=[],firstLoad=true;
 
-// Public homepage catalog: kept directly in the frontend so the public library
-// does not depend on D1 just to render the files. Admin/D1 functionality remains unchanged.
-const STATIC_GITHUB_RELEASE='https://github.com/mohammed-10-f/hr-reference-files/releases/download/files-v2/';
-const STATIC_RESOURCES=[
- {id:'static-1',title:'نموذج استلام عهدة موظف',description:'نموذج لتوثيق العهدة المسلّمة للموظف.',category_names:'نماذج HR',file_name:'Employee.Asset.Handover.Receipt.Form.docx',file_type:'word',version:'1.0',downloads:0,views:0,featured:true,static:true},
- {id:'static-2',title:'طلب إنهاء عقد من قبل الموظف',description:'نموذج طلب إنهاء عقد العمل من قبل الموظف.',category_names:'نماذج HR',file_name:'Employee.Contract.Termination.Request-1.docx',file_type:'word',version:'1.0',downloads:0,views:0,featured:true,static:true},
- {id:'static-3',title:'نموذج مباشرة عمل',description:'نموذج توثيق مباشرة الموظف للعمل.',category_names:'نماذج HR',file_name:'Employee.Joining.Form.docx',file_type:'word',version:'1.0',downloads:0,views:0,featured:true,static:true},
- {id:'static-4',title:'نموذج إنهاء خدمات موظف',description:'نموذج توثيق إنهاء خدمات الموظف.',category_names:'نماذج HR',file_name:'Employee.Termination.Form.docx',file_type:'word',version:'1.0',downloads:0,views:0,featured:true,static:true},
- {id:'static-5',title:'نموذج إنذار موظف',description:'نموذج إنذار وتوثيق المخالفة الوظيفية.',category_names:'نماذج HR',file_name:'Employee.Warning.Form.docx',file_type:'word',version:'1.0',downloads:0,views:0,static:true},
- {id:'static-6',title:'شهادة خبرة',description:'نموذج شهادة خبرة للموظف.',category_names:'نماذج HR',file_name:'Experience.Certificate.-1.docx',file_type:'word',version:'1.0',downloads:0,views:0,static:true},
- {id:'static-7',title:'نموذج تحقيق داخلي للموظف',description:'نموذج لتوثيق إجراءات التحقيق الداخلي للموظف.',category_names:'نماذج HR',file_name:'Internal.Employee.Investigation.Form.docx',file_type:'word',version:'1.0',downloads:0,views:0,static:true},
- {id:'static-8',title:'نموذج عرض وظيفي',description:'نموذج عرض وظيفي للمرشح.',category_names:'نماذج HR',file_name:'Job.Offer.Letter.docx',file_type:'word',version:'1.0',downloads:0,views:0,static:true},
- {id:'static-9',title:'نموذج موارد بشرية',description:'نموذج Word عام للاستخدام الإداري.',category_names:'Word',file_name:'default.docx',file_type:'word',version:'1.0',downloads:0,views:0,static:true},
- {id:'static-10',title:'نموذج Excel للموارد البشرية',description:'ملف Excel عام للاستخدام الإداري.',category_names:'Excel',file_name:'default.xlsx',file_type:'excel',version:'1.0',downloads:0,views:0,static:true}
-];
-const STATIC_CATEGORIES=[
- {slug:'all',name:'الكل',icon:'folder'},
- {slug:'word',name:'نماذج Word',icon:'document'},
- {slug:'excel',name:'نماذج Excel',icon:'spreadsheet'},
- {slug:'pdf',name:'نماذج PDF',icon:'file-text'},
- {slug:'labor-law',name:'نظام العمل',icon:'clipboard'}
-];
-function staticFileUrl(r){return STATIC_GITHUB_RELEASE+encodeURIComponent(r.file_name)}
-function staticCategoryMatch(r,slug){if(!slug||slug==='all')return true;if(slug==='word')return r.file_type==='word';if(slug==='excel')return r.file_type==='excel';if(slug==='pdf')return r.file_type==='pdf';if(slug==='labor-law')return /نظام العمل|مادة|لائحة/.test(r.title);return true}
 
 const iconSvg=(name)=>({
 'word':'<svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1.5" fill="#fff" stroke="#185ABD"/><path d="M15 3v5h4" fill="none" stroke="#185ABD"/><path d="M7 11l1.2 6 1.3-4 1.3 4 1.2-6" fill="none" stroke="#185ABD" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -74,9 +50,10 @@ function skeletonCategories(n){return Array.from({length:n}).map(()=>'<div class
 function skeletonList(n){return Array.from({length:n}).map(()=>'<article class="public-list-item skeleton"><span class="file-icon skel-block"></span><div class="public-list-main"><strong class="skel-line" style="width:65%"></strong><small class="skel-line" style="width:35%"></small></div></article>').join('')}
 function skeletonCards(n){return Array.from({length:n}).map(()=>'<article class="resource-card skeleton"><span class="file-icon skel-block"></span><strong class="skel-line" style="width:80%"></strong><small class="skel-line" style="width:50%"></small></article>').join('')}
 
-function loadCategories(){
- allCategories=STATIC_CATEGORIES.map(c=>({...c,resource_count:STATIC_RESOURCES.filter(r=>staticCategoryMatch(r,c.slug)).length}));
- $('#categories-list').innerHTML=allCategories.map(c=>`<button class="category-card ${activeCategory===c.slug?'active':''}" data-cat="${esc(c.slug)}" type="button" aria-pressed="${activeCategory===c.slug}"><span class="category-icon">${iconSvg(c.icon||'folder')}</span><span><strong>${esc(c.name)}</strong><small>${Number(c.resource_count||0).toLocaleString('ar-SA')} ملف</small></span></button>`).join('');
+async function loadCategories(){
+ if(firstLoad)$('#categories-list').innerHTML=skeletonCategories(6);
+ allCategories=await getJSON('/api/categories');
+ $('#categories-list').innerHTML=allCategories.length?allCategories.map(c=>`<button class="category-card ${activeCategory===c.slug?'active':''}" data-cat="${esc(c.slug)}" type="button" aria-pressed="${activeCategory===c.slug}"><span class="category-icon">${iconSvg(c.icon||'folder')}</span><span><strong>${esc(c.name)}</strong><small>${Number(c.resource_count||0).toLocaleString('ar-SA')} ملف</small></span></button>`).join(''):'<p class="muted-note">لا توجد أقسام متاحة حاليًا.</p>';
  document.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{activeCategory=activeCategory===b.dataset.cat?'':b.dataset.cat;loadCategories();loadResources();document.querySelector('#resources').scrollIntoView({behavior:'smooth',block:'start'})});
 }
 
@@ -84,7 +61,7 @@ function updateLibraryHeading(q){
  const title=$('#results-title'),count=$('#results-count');
  if(activeCategory){const cat=allCategories.find(c=>c.slug===activeCategory);title.textContent=cat?.name||'ملفات القسم';count.textContent=lastResources.length?`${lastResources.length.toLocaleString('ar-SA')} ملف${q?' مطابق للبحث':''}`:'لا توجد ملفات في هذا القسم';}
  else if(q){title.textContent='نتائج البحث';count.textContent=lastResources.length?`${lastResources.length.toLocaleString('ar-SA')} ملف مطابق`:'لم يتم العثور على ملفات';}
- else{title.textContent='الملفات';count.textContent=`${lastResources.length.toLocaleString('ar-SA')} ملف`}
+ else{title.textContent='أحدث الملفات';count.textContent=`${lastResources.length.toLocaleString('ar-SA')} ملف`}
 }
 
 function visitorId(){let id='';try{id=localStorage.getItem('hr_reference_visitor_id')||''}catch{}if(!id){try{id=(crypto&&typeof crypto.randomUUID==='function')?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2);localStorage.setItem('hr_reference_visitor_id',id)}catch{id=Date.now()+'-'+Math.random().toString(36).slice(2)}}return id}
@@ -92,21 +69,19 @@ function reactionMarkup(r){const likes=Number(r.reaction_likes||0),dislikes=Numb
 async function submitReaction(id,reaction,root,button){if(!root||root.dataset.busy==='1')return;root.dataset.busy='1';button?.setAttribute('aria-busy','true');try{const d=await getJSON('/api/resources/'+id+'/reaction',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reaction,visitor_id:visitorId()})});const like=root.querySelector('.like b'),dislike=root.querySelector('.dislike b');if(like)like.textContent=String(Number(d.likes||0));if(dislike)dislike.textContent=String(Number(d.dislikes||0));root.querySelectorAll('.reaction-btn').forEach(b=>b.classList.toggle('selected',b.dataset.reaction===d.my_reaction));}catch(e){console.error('Reaction failed',e);alert(e.message||'تعذر حفظ التقييم')}finally{root.dataset.busy='';button?.removeAttribute('aria-busy')}}
 function bindReactions(){if(window._hrReactionBound)return;window._hrReactionBound=true;document.addEventListener('click',e=>{const button=e.target.closest?.('.reaction-btn');if(!button)return;e.preventDefault();e.stopPropagation();const root=button.closest('[data-reaction-id]');if(!root)return;submitReaction(Number(root.dataset.reactionId),button.dataset.reaction,root,button)})}
 function trackViews(){const seen=window._hrkitViewedResources||(window._hrkitViewedResources=new Set());document.querySelectorAll('[data-view-id]').forEach(el=>{const id=Number(el.dataset.viewId);if(seen.has(id))return;const io=new IntersectionObserver(entries=>{if(entries.some(x=>x.isIntersecting)){seen.add(id);fetch('/api/resources/'+id+'/view',{method:'POST'}).catch(()=>{});io.disconnect()}},{threshold:.35});io.observe(el)})}
-function resourceCard(r,q){const [type,cls]=fileInfo(r);return `<article class="resource-card" ${r.static?'':'data-view-id="'+r.id+'"'}><div class="file-icon ${cls}">${fileIconMark(cls)}</div><div class="resource-top"><span class="tag">${esc(r.category_names||'عام')}</span>${r.featured?`<span class="featured-mark" title="ملف مختار" aria-label="ملف مختار">${iconSvg('star')}</span>`:''}</div><h3>${highlight(r.title,q)}</h3><p>${highlight(r.description||'ملف من مرجع الموارد البشرية.',q)}</p><div class="meta">الإصدار ${esc(r.version||'1.0')} · ${Number(r.downloads||0).toLocaleString('ar-SA')} تحميل · ${Number(r.views||0).toLocaleString('ar-SA')} زيارة</div>${reactionMarkup(r)}<div class="resource-card-actions"><a class="download" href="${r.static?staticFileUrl(r):'/api/download/'+encodeURIComponent(r.id)}" target="_blank" rel="noopener"><span>تحميل الملف</span><span class="download-icon">${iconSvg('download')}</span></a></div></article>`}
+function resourceCard(r,q){const [type,cls]=fileInfo(r);return `<article class="resource-card" data-view-id="${r.id}"><div class="file-icon ${cls}">${fileIconMark(cls)}</div><div class="resource-top"><span class="tag">${esc(r.category_names||'عام')}</span>${r.featured?`<span class="featured-mark" title="ملف مختار" aria-label="ملف مختار">${iconSvg('star')}</span>`:''}</div><h3>${highlight(r.title,q)}</h3><p>${highlight(r.description||'ملف من مرجع الموارد.',q)}</p><div class="meta">الإصدار ${esc(r.version||'1.0')} · ${Number(r.downloads||0).toLocaleString('ar-SA')} تحميل · ${Number(r.views||0).toLocaleString('ar-SA')} زيارة</div>${reactionMarkup(r)}<div class="resource-card-actions"><a class="download" href="/api/download/${encodeURIComponent(r.id)}"><span>تحميل الملف</span><span class="download-icon">${iconSvg('download')}</span></a></div></article>`}
 
-function publicList(r,q){const [type,cls]=fileInfo(r);return `<article class="public-list-item" ${r.static?'':'data-view-id="'+r.id+'"'}><div class="file-icon ${cls}">${fileIconMark(cls)}</div><div class="public-list-main"><strong>${highlight(r.title,q)}</strong><small>${esc(r.category_names||'عام')} · الإصدار ${esc(r.version||'1.0')}</small></div>${reactionMarkup(r)}<div class="list-actions"><a class="list-download" href="${r.static?staticFileUrl(r):'/api/download/'+encodeURIComponent(r.id)}" target="_blank" rel="noopener" aria-label="تحميل ${esc(r.title)}"><span>تحميل</span><span class="download-icon">${iconSvg('download')}</span></a></div></article>`}
+function publicList(r,q){const [type,cls]=fileInfo(r);return `<article class="public-list-item" data-view-id="${r.id}"><div class="file-icon ${cls}">${fileIconMark(cls)}</div><div class="public-list-main"><strong>${highlight(r.title,q)}</strong><small>${esc(r.category_names||'عام')} · الإصدار ${esc(r.version||'1.0')}</small></div>${reactionMarkup(r)}<div class="list-actions"><a class="list-download" href="/api/download/${encodeURIComponent(r.id)}" aria-label="تحميل ${esc(r.title)}"><span>تحميل</span><span class="download-icon">${iconSvg('download')}</span></a></div></article>`}
 
 async function loadResources(){
- const q=$('#search').value.trim().toLowerCase();
- const filtered=STATIC_RESOURCES.filter(r=>staticCategoryMatch(r,activeCategory)&&(!q||`${r.title} ${r.description} ${r.category_names}`.toLowerCase().includes(q)));
- lastResources=filtered;
- updateLibraryHeading(q);
+ const q=$('#search').value.trim();
+ if(firstLoad)$('#resources-list').innerHTML=skeletonList(6);
+ const data=await getJSON(`/api/resources?q=${encodeURIComponent(q)}&category=${encodeURIComponent(activeCategory)}`);
+ lastResources=data;updateLibraryHeading(q);
  $('#search').placeholder=activeCategory?(allCategories.find(c=>c.slug===activeCategory)?.name?`ابحث داخل ${allCategories.find(c=>c.slug===activeCategory).name}...`:'ابحث داخل القسم...'):'ابحث عن نموذج، سياسة، لائحة، ملف...';
- $('#resources-list').innerHTML=lastResources.map(r=>publicList(r,q)).join('');
- $('#empty').classList.toggle('hidden',lastResources.length>0);
+ $('#resources-list').innerHTML=lastResources.map(r=>publicList(r,q)).join('');bindReactions();trackViews();
  firstLoad=false;
 }
-
 
 ;
 function openNav(){$('#main-nav').classList.add('open');$('#nav-toggle').setAttribute('aria-expanded','true');$('#nav-backdrop').hidden=false;document.body.classList.add('no-scroll')}
@@ -127,4 +102,4 @@ $('#cta-explore').addEventListener('click',()=>$('#categories').scrollIntoView({
 let lastScroll=0;
 window.addEventListener('scroll',()=>{const y=window.scrollY;document.querySelector('.site-header').classList.toggle('scrolled',y>10);lastScroll=y},{passive:true});
 
-Promise.resolve(loadSettings()).then(()=>{loadCategories();loadResources();}).catch(e=>console.error('Public catalog failed',e));
+Promise.all([loadSettings(),loadCategories(),loadResources()]).catch(()=>$('#resources-list').innerHTML='<div class="empty-state"><div class="empty-mark">!</div><strong>تعذر تحميل الملفات</strong><p>تأكد من اتصال الموقع بقاعدة البيانات.</p></div>');
