@@ -21,6 +21,3 @@
 
 .public-site .resource-card-actions,.public-site .list-actions{display:flex;align-items:center;gap:8px;margin-top:12px}.public-site .resource-card-actions .download,.public-site .list-actions .list-download{width:100%;min-width:0;height:42px;min-height:42px;margin:0;padding:0 10px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:7px;border-radius:11px;font-size:10px;font-weight:800;white-space:nowrap}
 .report-dialog{width:100%;border-radius:17px;padding:18px;max-height:calc(100vh - 24px)}.report-head h2{font-size:18px}.report-head p{font-size:10px}.public-site .resource-card-actions,.public-site .list-actions{gap:7px}.public-site .resource-card-actions .download,.public-site .list-actions .list-download{height:40px;min-height:40px}}
-
-/* Electronic PDF form action — additive to existing library cards */
-.public-site .resource-card-actions .electronic-fill,.public-site .list-actions .electronic-fill{border-color:#d7e3f1;background:#f5f9fe;color:#082b63}.public-site .resource-card-actions .electronic-fill:hover,.public-site .list-actions .electronic-fill:hover{border-color:#a9bfd8;background:#edf4fc}
