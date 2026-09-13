@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#082b63">
+<title>مصمم النموذج الإلكتروني — HR Reference</title>
+<link rel="icon" type="image/png" href="/assets/logo.png">
+<link rel="stylesheet" href="/form-builder.css">
+</head>
+<body class="fb-body">
+<header class="fb-topbar">
+  <div class="fb-brand"><a href="/admin.html">HR Reference</a><span>مصمم النماذج الإلكترونية</span></div>
+  <div class="fb-top-actions">
+    <span id="save-state" class="save-state">جاهز</span>
+    <button id="preview-btn" class="fb-btn ghost">معاينة كمستخدم</button>
+    <button id="save-btn" class="fb-btn primary">حفظ التصميم</button>
+  </div>
+</header>
+<main class="fb-shell">
+  <aside class="fb-sidebar">
+    <div class="fb-sidebar-head"><div><small>PDF FORM DESIGNER</small><h1 id="form-title">جاري التحميل…</h1></div><a href="/admin.html" class="back-link">رجوع</a></div>
+    <section class="tool-section">
+      <div class="tool-title">الأدوات</div>
+      <button id="add-field" class="tool-button add"><span>＋</span><div><strong>إضافة حقل</strong><small>انقر ثم حدد مكانه داخل الـPDF</small></div></button>
+      <div class="tool-grid">
+        <button id="copy-field" class="tool-button small" disabled>نسخ الحقل</button>
+        <button id="delete-field" class="tool-button small danger" disabled>حذف الحقل</button>
+        <button id="undo-btn" class="tool-button small" disabled>↶ تراجع</button>
+        <button id="redo-btn" class="tool-button small" disabled>↷ إعادة</button>
+      </div>
+    </section>
+    <section class="tool-section field-properties">
+      <div class="tool-title">خصائص الحقل</div>
+      <div id="no-selection" class="empty-property">حدد حقلًا من الـPDF لعرض خصائصه.</div>
+      <div id="properties" class="hidden">
+        <label>اسم الحقل<input id="prop-name"></label>
+        <label>نوع الحقل<select id="prop-type">
+          <option value="short_text">نص قصير</option><option value="long_text">نص طويل</option><option value="number">رقم</option><option value="date">تاريخ</option>
+          <option value="select">قائمة اختيار</option><option value="radio">اختيار واحد</option><option value="checkbox">Checkbox</option>
+          <option value="static">حقل ثابت</option><option value="signature">مكان توقيع</option>
+        </select></label>
+        <div id="options-wrap" class="hidden"><label>الخيارات <textarea id="prop-options" rows="4" placeholder="خيار 1&#10;خيار 2&#10;خيار 3"></textarea></label></div>
+        <div id="static-wrap" class="hidden"><label>النص الثابت<textarea id="prop-static" rows="3"></textarea></label></div>
+        <div class="two-cols"><label>حجم الخط<input id="prop-font" type="number" min="6" max="96" step="1"></label><label>المحاذاة<select id="prop-align"><option value="right">يمين</option><option value="center">وسط</option><option value="left">يسار</option></select></label></div>
+        <div class="two-cols"><label>اتجاه النص<select id="prop-dir"><option value="rtl">عربي RTL</option><option value="ltr">English LTR</option></select></label><label>ترتيب Tab<input id="prop-tab" type="number" min="0" step="1"></label></div>
+        <label class="check-row"><input id="prop-required" type="checkbox"><span>حقل مطلوب</span></label>
+        <div class="two-cols"><label>حد أدنى<input id="prop-min" type="number" min="0"></label><label>حد أقصى<input id="prop-max" type="number" min="1"></label></div>
+        <label>النص الإرشادي<input id="prop-placeholder" placeholder="مثال: اكتب اسم الموظف"></label>
+        <div class="property-note">الموضع والحجم يتم التحكم بهما بالسحب المباشر داخل الصفحة، ولا تحتاج لإدخال إحداثيات.</div>
+      </div>
+    </section>
+    <section class="tool-section">
+      <div class="tool-title">صفحات النموذج</div>
+      <div id="page-list" class="page-list"></div>
+    </section>
+  </aside>
+  <section class="fb-canvas-area">
+    <div class="canvas-toolbar"><div><strong id="page-label">الصفحة 1</strong><small id="page-size">—</small></div><div class="zoom-controls"><button id="zoom-out">−</button><span id="zoom-value">100%</span><button id="zoom-in">＋</button></div></div>
+    <div id="pdf-workspace" class="pdf-workspace"><div class="loading-state">جاري تحميل الـPDF…</div></div>
+  </section>
+</main>
+<div id="toast" class="fb-toast"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+</script>
+<script src="/form-designer.js"></script>
+</body>
+</html>

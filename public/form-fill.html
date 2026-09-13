@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#082b63"><title>تعبئة النموذج — HR Reference</title>
+<link rel="icon" type="image/png" href="/assets/logo.png"><link rel="stylesheet" href="/form-builder.css">
+</head>
+<body class="fb-body fill-body">
+<header class="fb-topbar">
+  <div class="fb-brand"><a href="/">HR Reference</a><span id="form-title">تعبئة النموذج</span></div>
+  <div class="fb-top-actions"><button id="reset-btn" class="fb-btn ghost">إعادة تعيين</button><button id="generate-btn" class="fb-btn primary">إنشاء النموذج</button></div>
+</header>
+<main class="fill-shell">
+  <section class="fill-main">
+    <div class="fill-heading"><div><small>LIVE FORM FILLING</small><h1 id="heading">جاري التحميل…</h1><p>اكتب داخل الحقول وشاهد البيانات تظهر مباشرة في النموذج.</p></div><span id="draft-state" class="save-state">يحفظ محليًا</span></div>
+    <div id="fill-workspace" class="pdf-workspace"><div class="loading-state">جاري تحميل الـPDF…</div></div>
+  </section>
+  <aside class="fill-side"><div class="side-card"><div class="side-title">حقول النموذج</div><div id="field-summary" class="field-summary"></div><div class="side-note">يمكنك التنقل بين الحقول باستخدام Tab. البيانات تحفظ كمسودة على هذا الجهاز.</div></div></aside>
+</main>
+<div id="toast" class="fb-toast"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="/form-filler.js"></script>
+</body>
+</html>

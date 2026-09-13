@@ -1,0 +1,39 @@
+CREATE TABLE IF NOT EXISTS form_definitions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  resource_id INTEGER NOT NULL UNIQUE,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  version INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(resource_id) REFERENCES resources(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS form_fields (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  form_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL,
+  page INTEGER NOT NULL DEFAULT 1,
+  x REAL NOT NULL DEFAULT 0,
+  y REAL NOT NULL DEFAULT 0,
+  width REAL NOT NULL DEFAULT 180,
+  height REAL NOT NULL DEFAULT 32,
+  font_size REAL NOT NULL DEFAULT 12,
+  font_family TEXT NOT NULL DEFAULT 'IBM Plex Sans Arabic',
+  align TEXT NOT NULL DEFAULT 'right',
+  direction TEXT NOT NULL DEFAULT 'rtl',
+  required INTEGER NOT NULL DEFAULT 0,
+  max_length INTEGER,
+  min_length INTEGER,
+  options_json TEXT NOT NULL DEFAULT '[]',
+  tab_order INTEGER NOT NULL DEFAULT 0,
+  placeholder TEXT NOT NULL DEFAULT '',
+  static_value TEXT NOT NULL DEFAULT '',
+  settings_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(form_id) REFERENCES form_definitions(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_form_fields_form ON form_fields(form_id);
+CREATE INDEX IF NOT EXISTS idx_form_fields_page ON form_fields(form_id,page);

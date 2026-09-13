@@ -36,6 +36,10 @@ async function ensureSchema(env){
    env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_resource_categories_resource ON resource_categories(resource_id)'),
    env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_resource_categories_category ON resource_categories(category_id)'),
    env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_resources_featured ON resources(featured)'),
+   env.DB.prepare('CREATE TABLE IF NOT EXISTS form_definitions (id INTEGER PRIMARY KEY AUTOINCREMENT, resource_id INTEGER NOT NULL UNIQUE, enabled INTEGER NOT NULL DEFAULT 1, version INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(resource_id) REFERENCES resources(id) ON DELETE CASCADE)'),
+   env.DB.prepare('CREATE TABLE IF NOT EXISTS form_fields (id INTEGER PRIMARY KEY AUTOINCREMENT, form_id INTEGER NOT NULL, name TEXT NOT NULL, type TEXT NOT NULL, page INTEGER NOT NULL DEFAULT 1, x REAL NOT NULL DEFAULT 0, y REAL NOT NULL DEFAULT 0, width REAL NOT NULL DEFAULT 180, height REAL NOT NULL DEFAULT 32, font_size REAL NOT NULL DEFAULT 12, font_family TEXT NOT NULL DEFAULT \'IBM Plex Sans Arabic\', align TEXT NOT NULL DEFAULT \'right\', direction TEXT NOT NULL DEFAULT \'rtl\', required INTEGER NOT NULL DEFAULT 0, max_length INTEGER, min_length INTEGER, options_json TEXT NOT NULL DEFAULT \'[]\', tab_order INTEGER NOT NULL DEFAULT 0, placeholder TEXT NOT NULL DEFAULT \'\', static_value TEXT NOT NULL DEFAULT \'\', settings_json TEXT NOT NULL DEFAULT \'{}\', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(form_id) REFERENCES form_definitions(id) ON DELETE CASCADE)'),
+   env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_form_fields_form ON form_fields(form_id)'),
+   env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_form_fields_page ON form_fields(form_id,page)'),
    env.DB.prepare('CREATE TABLE IF NOT EXISTS resource_ratings (resource_id INTEGER NOT NULL, visitor_hash TEXT NOT NULL, rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5), created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(resource_id,visitor_hash), FOREIGN KEY(resource_id) REFERENCES resources(id) ON DELETE CASCADE)'),
    env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_resource_ratings_resource ON resource_ratings(resource_id)'),
    env.DB.prepare("CREATE TABLE IF NOT EXISTS resource_reactions (resource_id INTEGER NOT NULL, visitor_hash TEXT NOT NULL, reaction TEXT NOT NULL CHECK(reaction IN ('like','dislike')), created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(resource_id,visitor_hash), FOREIGN KEY(resource_id) REFERENCES resources(id) ON DELETE CASCADE)"),
@@ -393,6 +397,97 @@ export default {async fetch(request,env){
   if(url.pathname==='/api/admin/github/upload'&&request.method==='POST')return admin(request,env,async()=>{const form=await request.formData(),file=form.get('file');if(!(file instanceof File))return bad('اختر ملفًا أولًا.');if(file.size>2*1024*1024*1024)return bad('حجم الملف يتجاوز 2GB.');return json(await uploadToGitHub(env,file))});
   if(url.pathname==='/api/admin/resources'&&request.method==='POST')return admin(request,env,async()=>{let b={},uploaded=null;const ct=request.headers.get('content-type')||'';if(ct.includes('multipart/form-data')){const form=await request.formData();const file=form.get('file');b={title:form.get('title'),category_ids:parseIdsInput(form.get('category_ids')),description:form.get('description'),keywords:form.get('keywords'),version:form.get('version'),file_type:form.get('file_type'),featured:String(form.get('featured'))==='true',status:form.get('status')};if(file instanceof File){if(file.size>2*1024*1024*1024)return bad('حجم الملف يتجاوز 2GB.');uploaded=await uploadToGitHub(env,file);b.file_url=uploaded.url;b.file_name=uploaded.file_name;b.file_type=uploaded.file_type}else b.file_url=form.get('file_url')}else b=await request.json();const title=String(b.title||'').trim(),fileUrl=String(b.file_url||'').trim(),ids=parseIds(b.category_ids||b.category_id);if(!title||!fileUrl)return bad('اسم الملف والملف مطلوبان');const safeFileUrl=validateExternalUrl(fileUrl);if(!safeFileUrl)return bad('رابط الملف يجب أن يبدأ بـ http:// أو https://');if(!ids.length)return bad('اختر قسمًا واحدًا على الأقل');const fileName=String(b.file_name||uploaded?.file_name||inferFileName(safeFileUrl)),fileType=String((!b.file_type||b.file_type==='auto')?(uploaded?.file_type||inferFileType(fileName)):b.file_type);const r=await env.DB.prepare(`INSERT INTO resources(title,slug,description,category_id,file_url,file_name,file_type,keywords,version,status,featured,github_asset_id,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)`).bind(title,slugify(title)+'-'+Date.now(),b.description||'',ids[0],safeFileUrl,fileName,fileType,b.keywords||'',b.version||'1.0',['published','hidden','draft'].includes(String(b.status))?String(b.status):'published',b.featured?1:0,Number(uploaded?.github_asset_id||0)||null).run();await syncCategories(env,r.meta.last_row_id,ids);return json({ok:true,id:r.meta.last_row_id,file_url:safeFileUrl,file_name:fileName,file_type:fileType},201)});
   const rm=url.pathname.match(/^\/api\/admin\/resources\/(\d+)$/);if(rm&&request.method==='PATCH')return admin(request,env,async()=>{const id=Number(rm[1]),sets=[],vals=[];const previous=await env.DB.prepare('SELECT * FROM resources WHERE id=?').bind(id).first();if(!previous)return bad('الملف غير موجود',404);let b={},uploaded=null;const ct=request.headers.get('content-type')||'';if(ct.includes('multipart/form-data')){const form=await request.formData();const file=form.get('file');b={title:form.get('title'),category_ids:parseIdsInput(form.get('category_ids')),description:form.get('description'),keywords:form.get('keywords'),version:form.get('version'),file_type:form.get('file_type'),featured:String(form.get('featured'))==='true',status:form.get('status')};if(file instanceof File){if(file.size>2*1024*1024*1024)return bad('حجم الملف يتجاوز 2GB.');uploaded=await uploadToGitHub(env,file);b.file_url=uploaded.url;b.file_name=uploaded.file_name;b.file_type=uploaded.file_type}}else b=await request.json();if(b.file_url!==undefined){const safeUrl=validateExternalUrl(String(b.file_url));if(!safeUrl)return bad('رابط الملف يجب أن يبدأ بـ http:// أو https://');b.file_url=safeUrl}const allowed=['title','description','file_url','file_type','keywords','version','status','featured'];if(b.status!==undefined&&!['published','hidden','draft','archived'].includes(String(b.status)))return bad('حالة الملف غير صالحة');for(const k of allowed)if(b[k]!==undefined){sets.push(`${k}=?`);vals.push(k==='featured'?(b[k]?1:0):b[k])}if(b.file_url!==undefined){const n=String(b.file_name||uploaded?.file_name||inferFileName(String(b.file_url)));if(n){sets.push('file_name=?','file_type=?');vals.push(n,String((!b.file_type||b.file_type==='auto')?(uploaded?.file_type||inferFileType(n)):b.file_type));if(uploaded?.github_asset_id){sets.push('github_asset_id=?');vals.push(Number(uploaded.github_asset_id))}}}const ids=b.category_ids!==undefined?parseIds(b.category_ids):null;if(ids&&!ids.length)return bad('اختر قسمًا واحدًا على الأقل');if(ids){sets.push('category_id=?');vals.push(ids[0])}if(!sets.length&&ids===null)return bad('لا توجد تغييرات');if(sets.length){sets.push('updated_at=CURRENT_TIMESTAMP');vals.push(id);await env.DB.prepare(`UPDATE resources SET ${sets.join(',')} WHERE id=?`).bind(...vals).run()}if(ids)await syncCategories(env,id,ids);if(uploaded?.github_asset_id && previous.file_url && previous.file_url!==uploaded.url){try{await deleteGitHubAssetForResource(env,previous)}catch(e){console.error('[GitHub] old asset cleanup failed',e)}}return json({ok:true,file_url:uploaded?.url||b.file_url||undefined})});if(rm&&request.method==='DELETE')return admin(request,env,async()=>{const id=Number(rm[1]);const resource=await env.DB.prepare('SELECT * FROM resources WHERE id=?').bind(id).first();if(!resource)return bad('الملف غير موجود',404);let githubDeleted=false;if(resource.file_url){try{githubDeleted=await deleteGitHubAssetForResource(env,resource)}catch(e){return bad('تعذر حذف الملف من GitHub. لم يتم حذف السجل من الموقع حتى لا يبقى ملف يتيم في التخزين.',502)}}await env.DB.prepare('DELETE FROM resource_categories WHERE resource_id=?').bind(id).run();await env.DB.prepare('DELETE FROM resources WHERE id=?').bind(id).run();return json({ok:true,github_deleted:githubDeleted})});
+
+  // ===== PDF electronic forms (additive feature; does not alter existing resource/download flows) =====
+  const FORM_TYPES=new Set(['short_text','long_text','number','date','select','radio','checkbox','static','signature']);
+  const normalizeFormField=(f,i)=>({
+    id:Number(f.id)||0,name:String(f.name||'').trim().slice(0,120),type:FORM_TYPES.has(String(f.type))?String(f.type):'short_text',
+    page:Math.max(1,Number(f.page)||1),x:Number.isFinite(Number(f.x))?Number(f.x):0,y:Number.isFinite(Number(f.y))?Number(f.y):0,
+    width:Math.max(20,Math.min(2000,Number(f.width)||180)),height:Math.max(12,Math.min(1000,Number(f.height)||32)),
+    font_size:Math.max(6,Math.min(96,Number(f.font_size)||12)),font_family:String(f.font_family||'IBM Plex Sans Arabic').slice(0,100),
+    align:['left','center','right'].includes(f.align)?f.align:'right',direction:f.direction==='ltr'?'ltr':'rtl',
+    required:f.required?1:0,max_length:(f.max_length===null||f.max_length===''||f.max_length===undefined)?null:Math.max(1,Math.min(10000,Number(f.max_length)||1)),
+    min_length:(f.min_length===null||f.min_length===''||f.min_length===undefined)?null:Math.max(0,Math.min(10000,Number(f.min_length)||0)),
+    options:Array.isArray(f.options)?f.options.map(v=>String(v).slice(0,200)).slice(0,100):[],
+    tab_order:Math.max(0,Number(f.tab_order)||i),placeholder:String(f.placeholder||'').slice(0,200),
+    static_value:String(f.static_value||'').slice(0,5000),settings:(f.settings&&typeof f.settings==='object')?f.settings:{}
+  });
+  const serializeFormField=f=>({...f,required:!!f.required,options:JSON.parse(f.options_json||'[]'),settings:JSON.parse(f.settings_json||'{}')});
+  async function getForm(env,resourceId,includeUnpublished=false){
+    const r=await env.DB.prepare("SELECT id,title,file_url,file_name,file_type,status FROM resources WHERE id=?").bind(resourceId).first();
+    if(!r)return null;
+    if(!includeUnpublished&&r.status!=='published')return null;
+    const form=await env.DB.prepare("SELECT id,resource_id,enabled,version,created_at,updated_at FROM form_definitions WHERE resource_id=?").bind(resourceId).first();
+    if(!form||!form.enabled)return {resource:r,form:null,fields:[]};
+    const {results}=await env.DB.prepare("SELECT * FROM form_fields WHERE form_id=? ORDER BY page,tab_order,id").bind(form.id).all();
+    return {resource:r,form,fields:(results||[]).map(serializeFormField)};
+  }
+  if(url.pathname==='/api/forms'&&request.method==='GET'){
+    const {results}=await env.DB.prepare("SELECT fd.resource_id,fd.version,COUNT(ff.id) field_count FROM form_definitions fd JOIN resources r ON r.id=fd.resource_id AND r.status='published' LEFT JOIN form_fields ff ON ff.form_id=fd.id WHERE fd.enabled=1 GROUP BY fd.resource_id").all();
+    return cors(json(results||[]),request);
+  }
+  const publicFormMatch=url.pathname.match(/^\/api\/forms\/(\d+)$/);
+  if(publicFormMatch&&request.method==='GET'){
+    const id=Number(publicFormMatch[1]),data=await getForm(env,id,false);
+    if(!data)return cors(bad('النموذج غير موجود أو غير منشور',404),request);
+    if(!data.form)return cors(bad('هذا الملف ليس نموذجًا إلكترونيًا',404),request);
+    return cors(json(data),request);
+  }
+  const publicFormSourceMatch=url.pathname.match(/^\/api\/forms\/(\d+)\/source$/);
+  if(publicFormSourceMatch&&request.method==='GET'){
+    const id=Number(publicFormSourceMatch[1]),data=await getForm(env,id,false);
+    if(!data?.resource)return cors(bad('الملف غير موجود',404),request);
+    const isPdf=String(data.resource.file_type||'').toLowerCase().includes('pdf')||/\.pdf$/i.test(String(data.resource.file_name||''));
+    if(!isPdf)return cors(bad('الملف ليس PDF',415),request);
+    try{const src=await fetch(data.resource.file_url,{redirect:'follow'});if(!src.ok)return cors(bad('تعذر تحميل ملف PDF الأصلي',502),request);
+      const h=new Headers(src.headers);h.set('content-type','application/pdf');h.set('cache-control','public, max-age=300');h.set('content-disposition','inline');
+      return new Response(src.body,{status:200,headers:h});
+    }catch(e){return cors(bad('تعذر تحميل ملف PDF الأصلي',502),request)}
+  }
+  if(url.pathname==='/api/admin/forms'&&request.method==='GET')return admin(request,env,async()=>{
+    const {results}=await env.DB.prepare("SELECT fd.resource_id,fd.id,fd.enabled,fd.version,fd.updated_at,r.title,r.file_name,r.status,COUNT(ff.id) field_count FROM form_definitions fd JOIN resources r ON r.id=fd.resource_id LEFT JOIN form_fields ff ON ff.form_id=fd.id GROUP BY fd.id ORDER BY fd.updated_at DESC").all();return json(results||[]);
+  });
+  const adminFormMatch=url.pathname.match(/^\/api\/admin\/forms\/(\d+)$/);
+  if(adminFormMatch&&request.method==='GET')return admin(request,env,async()=>{
+    const id=Number(adminFormMatch[1]),data=await getForm(env,id,true);if(!data)return bad('الملف غير موجود',404);return json(data);
+  });
+  if(adminFormMatch&&request.method==='PUT')return admin(request,env,async()=>{
+    const id=Number(adminFormMatch[1]),resource=await env.DB.prepare("SELECT id,file_url,file_name,file_type FROM resources WHERE id=?").bind(id).first();
+    if(!resource)return bad('الملف غير موجود',404);
+    const isPdf=String(resource.file_type||'').toLowerCase().includes('pdf')||/\.pdf$/i.test(String(resource.file_name||''));
+    if(!isPdf)return bad('ميزة التعبئة الإلكترونية متاحة لملفات PDF فقط',415);
+    const body=await request.json(),raw=Array.isArray(body.fields)?body.fields:[],fields=raw.slice(0,500).map(normalizeFormField).filter(f=>f.name);
+    const invalid=fields.find(f=>f.page<1||f.x<0||f.y<0||f.width<=0||f.height<=0);if(invalid)return bad('خصائص أحد الحقول غير صالحة');
+    let form=await env.DB.prepare("SELECT id,version FROM form_definitions WHERE resource_id=?").bind(id).first();
+    if(!form){const r=await env.DB.prepare("INSERT INTO form_definitions(resource_id,enabled,version) VALUES(?,?,1)").bind(id,body.enabled===false?0:1).run();form={id:r.meta.last_row_id,version:1}}
+    else await env.DB.prepare("UPDATE form_definitions SET enabled=?,version=version+1,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(body.enabled===false?0:1,form.id).run();
+    const statements=[env.DB.prepare("DELETE FROM form_fields WHERE form_id=?").bind(form.id)];
+    for(const f of fields)statements.push(env.DB.prepare(`INSERT INTO form_fields(form_id,name,type,page,x,y,width,height,font_size,font_family,align,direction,required,max_length,min_length,options_json,tab_order,placeholder,static_value,settings_json) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(form.id,f.name,f.type,f.page,f.x,f.y,f.width,f.height,f.font_size,f.font_family,f.align,f.direction,f.required,f.max_length,f.min_length,JSON.stringify(f.options),f.tab_order,f.placeholder,f.static_value,JSON.stringify(f.settings)));
+    await env.DB.batch(statements);
+    const saved=await getForm(env,id,true);return json({ok:true,...saved});
+  });
+  const adminFormDelete=url.pathname.match(/^\/api\/admin\/forms\/(\d+)$/);
+  if(adminFormDelete&&request.method==='DELETE')return admin(request,env,async()=>{const id=Number(adminFormDelete[1]);await env.DB.prepare("DELETE FROM form_definitions WHERE resource_id=?").bind(id).run();return json({ok:true})});
+  const adminFormSource=url.pathname.match(/^\/api\/admin\/forms\/(\d+)\/source$/);
+  if(adminFormSource&&request.method==='GET')return admin(request,env,async()=>{
+    const id=Number(adminFormSource[1]),data=await getForm(env,id,true);if(!data)return bad('الملف غير موجود',404);
+    const isPdf=String(data.resource.file_type||'').toLowerCase().includes('pdf')||/\.pdf$/i.test(String(data.resource.file_name||''));if(!isPdf)return bad('الملف ليس PDF',415);
+    try{const src=await fetch(data.resource.file_url,{redirect:'follow'});if(!src.ok)return bad('تعذر تحميل ملف PDF الأصلي',502);const h=new Headers(src.headers);h.set('content-type','application/pdf');h.set('cache-control','private, max-age=60');h.set('content-disposition','inline');return new Response(src.body,{status:200,headers:h})}catch(e){return bad('تعذر تحميل ملف PDF الأصلي',502)}
+  });
+  const copyFormMatch=url.pathname.match(/^\/api\/admin\/forms\/(\d+)\/copy$/);
+  if(copyFormMatch&&request.method==='POST')return admin(request,env,async()=>{
+    const sourceId=Number(copyFormMatch[1]),src=await getForm(env,sourceId,true);if(!src?.form)return bad('التصميم غير موجود',404);
+    const title=String(src.resource.title||'نموذج')+' — نسخة جديدة';
+    const slug=slugify(title)+'-'+Date.now();
+    const r=await env.DB.prepare("INSERT INTO resources(title,slug,description,category_id,file_url,file_name,file_type,keywords,version,status,featured,github_asset_id,updated_at) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP FROM resources WHERE id=?").bind(title,slug,src.resource.description||'',(await env.DB.prepare("SELECT category_id FROM resources WHERE id=?").bind(sourceId).first())?.category_id||null,src.resource.file_url,src.resource.file_name,src.resource.file_type,src.resource.keywords||'',src.resource.version||'1.0','draft',0,src.resource.github_asset_id||null,sourceId).run();
+    const newId=r.meta.last_row_id;const nf=await env.DB.prepare("INSERT INTO form_definitions(resource_id,enabled,version) VALUES(?,?,1)").bind(newId,1).run();const newFormId=nf.meta.last_row_id;
+    const oldFields=src.fields||[],stmts=[];for(const f of oldFields){stmts.push(env.DB.prepare(`INSERT INTO form_fields(form_id,name,type,page,x,y,width,height,font_size,font_family,align,direction,required,max_length,min_length,options_json,tab_order,placeholder,static_value,settings_json) SELECT ?,name,type,page,x,y,width,height,font_size,font_family,align,direction,required,max_length,min_length,options_json,tab_order,placeholder,static_value,settings_json FROM form_fields WHERE id=?`).bind(newFormId,f.id))}
+    if(stmts.length)await env.DB.batch(stmts);
+    // Keep the same category mapping as the source without changing the source resource.
+    const cats=await env.DB.prepare("SELECT category_id FROM resource_categories WHERE resource_id=?").bind(sourceId).all();if(cats.results?.length)await env.DB.batch(cats.results.map(c=>env.DB.prepare("INSERT OR IGNORE INTO resource_categories(resource_id,category_id) VALUES(?,?)").bind(newId,c.category_id)));
+    return json({ok:true,id:newId,title},201);
+  });
+
   if(url.pathname==='/robots.txt'&&request.method==='GET'){const base=url.origin;const robots=await getSetting(env,'robots')||'index,follow';return securityHeaders(new Response(`User-agent: *\nAllow: /\nDisallow: /admin.html\nSitemap: ${base}/sitemap.xml\n`,{headers:{'content-type':'text/plain; charset=utf-8'}}),request)}
   if(url.pathname==='/sitemap.xml'&&request.method==='GET'){const {results}=await env.DB.prepare("SELECT slug,updated_at FROM resources WHERE status='published' ORDER BY updated_at DESC LIMIT 5000").all();const base=url.origin;const urls=[`${base}/`,`${base}/privacy`,`${base}/terms`,`${base}/disclaimer`];const xml=`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map(u=>`<url><loc>${u.replace(/&/g,'&amp;')}</loc></url>`).join('')}</urlset>`;return securityHeaders(new Response(xml,{headers:{'content-type':'application/xml; charset=utf-8'}}),request)}
   if((url.pathname==='/privacy'||url.pathname==='/terms'||url.pathname==='/disclaimer')&&request.method==='GET'){const key=url.pathname==='/privacy'?'privacy_content':url.pathname==='/terms'?'terms_content':'disclaimer_content';const title=url.pathname==='/privacy'?'سياسة الخصوصية':url.pathname==='/terms'?'الشروط والأحكام':'إخلاء المسؤولية';const content=await getSetting(env,key)||title;const escHtml=v=>String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));const html=`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escHtml(title)} — HR Reference</title><link rel="icon" href="${escHtml(await getSetting(env,'favicon_url')||'/assets/logo.png')}"><style>body{margin:0;font-family:Arial,sans-serif;background:#f6f8fc;color:#102a56}main{max-width:900px;margin:60px auto;padding:40px;background:#fff;border-radius:20px;box-shadow:0 10px 40px rgba(8,43,99,.08)}h1{margin-top:0}p{line-height:2;white-space:pre-wrap;color:#475467}a{color:#0b3b7a}</style></head><body><main><a href="/">← العودة للرئيسية</a><h1>${escHtml(title)}</h1><p>${escHtml(content)}</p></main></body></html>`;return securityHeaders(new Response(html,{headers:{'content-type':'text/html; charset=utf-8'}}),request)}
