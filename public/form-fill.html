@@ -18,27 +18,8 @@
   <aside class="fill-side"><div class="side-card"><div class="side-title">حقول النموذج</div><div id="field-summary" class="field-summary"></div><div class="side-note">يمكنك التنقل بين الحقول باستخدام Tab. البيانات تحفظ كمسودة على هذا الجهاز.</div></div></aside>
 </main>
 <div id="toast" class="fb-toast"></div>
-<script>
-(function(){
-  const urls=[
-    'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',
-    'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js'
-  ];
-  const status=document.querySelector('.loading-state');
-  function fail(){ if(status) status.innerHTML='تعذر تحميل محرك قراءة PDF.<br><small>تحقق من اتصال الشبكة ثم أعد المحاولة.</small>'; }
-  function load(i){
-    if(i>=urls.length){fail();return;}
-    const sc=document.createElement('script'); sc.src=urls[i]; sc.async=true;
-    const timer=setTimeout(()=>{sc.remove();load(i+1)},8000);
-    sc.onload=()=>{clearTimeout(timer); if(window.pdfjsLib){
-      window.__PDF_READY__=true;
-      const app=document.createElement('script'); app.src='/form-filler.js'; document.body.appendChild(app);
-    } else {sc.remove();load(i+1)}};
-    sc.onerror=()=>{clearTimeout(timer);sc.remove();load(i+1)};
-    document.head.appendChild(sc);
-  }
-  load(0);
-})();
-</script>
+<script src="/vendor/pdfjs.min.js"></script>
+<script src="/vendor/pdf-lib.min.js"></script>
+<script src="/form-filler.js"></script>
 </body>
 </html>
