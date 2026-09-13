@@ -1,3 +1,35 @@
+
+async function loadExternalScript(urls, label){
+  if(label==='PDF.js' && window.pdfjsLib) return window.pdfjsLib;
+  if(label==='PDF-Lib' && window.PDFLib) return window.PDFLib;
+  let last;
+  for(const url of urls){
+    try{
+      await new Promise((resolve,reject)=>{
+        const script=document.createElement('script');
+        let done=false;
+        const timer=setTimeout(()=>{if(done)return;done=true;script.remove();reject(new Error('انتهت مهلة تحميل '+label));},8000);
+        script.onload=()=>{if(done)return;done=true;clearTimeout(timer);resolve()};
+        script.onerror=()=>{if(done)return;done=true;clearTimeout(timer);script.remove();reject(new Error('تعذر تحميل '+label))};
+        script.src=url;script.async=true;document.head.appendChild(script);
+      });
+      if(label==='PDF.js' && window.pdfjsLib) return window.pdfjsLib;
+      if(label==='PDF-Lib' && window.PDFLib) return window.PDFLib;
+      throw new Error('تم تحميل '+label+' لكن المكتبة غير متاحة');
+    }catch(e){last=e}
+  }
+  throw last||new Error('تعذر تحميل '+label);
+}
+async function ensurePdfJs(){
+  if(window.pdfjsLib) return window.pdfjsLib;
+  const lib=await loadExternalScript([
+    '/api/pdf-engine/pdfjs',
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+    'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js'
+  ],'PDF.js');
+  if(lib.GlobalWorkerOptions) lib.GlobalWorkerOptions.workerSrc='';
+  return lib;
+}
 const $=s=>document.querySelector(s);
 const token=sessionStorage.getItem('hrkit_admin_token');
 const qs=new URLSearchParams(location.search), resourceId=Number(qs.get('id'));
@@ -84,6 +116,7 @@ async function fetchPdfBytes(url,options={},timeoutMs=20000){
  finally{clearTimeout(timer)}
 }
 async function loadPdf(){
+ try{ await ensurePdfJs(); }catch(e){ throw new Error('تعذر تشغيل محرك PDF: '+e.message); }
  $('#pdf-workspace').innerHTML='<div class="loading-state">1/3 — جاري الاتصال بملف النموذج…<br><small>يتم التحقق من ملف PDF</small></div>';
  try{
   const directUrl=String(state.resource?.file_url||'').trim();if(!directUrl)throw new Error('رابط ملف PDF غير موجود في بيانات الملف');
@@ -98,7 +131,7 @@ async function loadPdf(){
  }catch(e){throw e}
 }
 async function load(){
- try{await window.__pdfEngineReady;$('#pdf-workspace').innerHTML='<div class="loading-state">جاري تحميل بيانات الملف…</div>';const d=await api('/api/admin/forms/'+resourceId);state.resource=d.resource;state.form=d.form;state.fields=(d.fields||[]).map(f=>({...f,id:String(f.id),options:f.options||[],settings:f.settings||{}}));$('#form-title').textContent=state.resource.title;state.history=[snapshot()];updateHistoryButtons();await loadPdf();setSave('لم يتم تعديل شيء');}
+ try{$('#pdf-workspace').innerHTML='<div class="loading-state">جاري تحميل بيانات الملف…</div>';const d=await api('/api/admin/forms/'+resourceId);state.resource=d.resource;state.form=d.form;state.fields=(d.fields||[]).map(f=>({...f,id:String(f.id),options:f.options||[],settings:f.settings||{}}));$('#form-title').textContent=state.resource.title;state.history=[snapshot()];updateHistoryButtons();await loadPdf();setSave('لم يتم تعديل شيء');}
  catch(e){$('#pdf-workspace').innerHTML=`<div class="loading-state">${esc(e.message)}</div>`;toast(e.message,'error')}
 }
 function scheduleSave(){clearTimeout(state.saveTimer);state.saveTimer=setTimeout(save,900);setSave('حفظ تلقائي قريب…')}

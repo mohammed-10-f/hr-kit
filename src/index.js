@@ -422,6 +422,29 @@ export default {async fetch(request,env){
     const {results}=await env.DB.prepare("SELECT * FROM form_fields WHERE form_id=? ORDER BY page,tab_order,id").bind(form.id).all();
     return {resource:r,form,fields:(results||[]).map(serializeFormField)};
   }
+  // Same-origin PDF engine loader. Keeps form pages from blocking on a third-party <script> tag.
+  if((url.pathname==='/api/pdf-engine/pdfjs'||url.pathname==='/api/pdf-engine/pdf-lib')&&request.method==='GET'){
+    const isLib=url.pathname.endsWith('pdf-lib');
+    const sources=isLib?[
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js',
+      'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js'
+    ]:[
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+      'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js'
+    ];
+    for(const srcUrl of sources){
+      try{
+        const ac=new AbortController();const timer=setTimeout(()=>ac.abort(),7000);
+        const src=await fetch(srcUrl,{signal:ac.signal,cf:{cacheTtl:86400,cacheEverything:true}});
+        clearTimeout(timer);
+        if(src.ok){
+          const h=new Headers();h.set('content-type','application/javascript; charset=utf-8');h.set('cache-control','public, max-age=86400, stale-while-revalidate=604800');h.set('x-pdf-engine','same-origin');
+          return new Response(src.body,{status:200,headers:h});
+        }
+      }catch(e){}
+    }
+    return cors(bad('تعذر تحميل محرك PDF من المصادر المتاحة',503),request);
+  }
   if(url.pathname==='/api/forms'&&request.method==='GET'){
     const {results}=await env.DB.prepare("SELECT fd.resource_id,fd.version,COUNT(ff.id) field_count FROM form_definitions fd JOIN resources r ON r.id=fd.resource_id AND r.status='published' LEFT JOIN form_fields ff ON ff.form_id=fd.id WHERE fd.enabled=1 GROUP BY fd.resource_id").all();
     return cors(json(results||[]),request);
