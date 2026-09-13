@@ -87,7 +87,7 @@ async function loadPdf(){
    bytes=await fetchArrayBufferWithTimeout('/api/forms/'+resourceId+'/source',{},20000);
   }
   $('#fill-workspace').innerHTML='<div class="loading-state">3/3 — جاري تجهيز الصفحة الأولى…<br><small>يتم تحليل ملف PDF</small></div>';
-  state.pdf=await pdfjsLib.getDocument({data:new Uint8Array(bytes),disableAutoFetch:true,disableStream:true}).promise;
+  state.pdf=await pdfjsLib.getDocument({data:new Uint8Array(bytes),disableAutoFetch:true,disableStream:true,disableRange:true,disableWorker:true}).promise;
   if(!state.pdf.numPages)throw new Error('ملف PDF لا يحتوي على صفحات');
   state.pages=new Array(state.pdf.numPages);state.pagePromises={};
   const first=await loadPage(0);

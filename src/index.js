@@ -283,17 +283,52 @@ async function deleteGitHubAssetForResource(env,resource){
   const url=String(resource.file_url);
   if(!url.startsWith('https://github.com/'))return false;
   const {owner,repo}=await githubConfig(env);
+  const expectedPrefix=`https://github.com/${owner}/${repo}/releases/download/`;
+
+  // Prefer the stored asset id, but never trust a stale id blindly. If GitHub
+  // says it is gone, resolve the current asset by URL/name before giving up.
   let assetId=Number(resource.github_asset_id||0);
-  if(!assetId){
+  let assets=null;
+
+  const resolveCurrentAsset=async()=>{
+    if(!assets){
+      const listed=await listGitHubReleaseAssets(env);
+      assets=listed.assets||[];
+    }
+    const match=assets.find(a=>
+      String(a.browser_download_url||'')===url ||
+      (url.startsWith(expectedPrefix) && resource.file_name && String(a.name||'')===String(resource.file_name))
+    );
+    return Number(match?.id||0);
+  };
+
+  if(assetId){
     try{
-      const {assets}=await listGitHubReleaseAssets(env);
-      const expectedPrefix=`https://github.com/${owner}/${repo}/releases/download/`;const match=assets.find(a=>String(a.browser_download_url||'')===url || (url.startsWith(expectedPrefix) && resource.file_name && a.name===resource.file_name));
-      assetId=Number(match?.id||0);
-    }catch(e){console.error('[GitHub] unable to resolve asset for deletion',e);return false;}
+      await githubRequest(env,`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases/assets/${assetId}`,{method:'DELETE'});
+      return true;
+    }catch(e){
+      // A stale asset id is common after a previous replacement. Re-resolve it
+      // instead of blocking deletion of the site's record.
+      if(Number(e?.status)!==404)throw e;
+      assetId=0;
+    }
   }
-  if(!assetId)return false;
-  await githubRequest(env,`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases/assets/${assetId}`,{method:'DELETE'});
-  return true;
+
+  assetId=await resolveCurrentAsset();
+  if(!assetId){
+    // The GitHub asset is already absent, so there is nothing left to delete.
+    return true;
+  }
+
+  try{
+    await githubRequest(env,`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases/assets/${assetId}`,{method:'DELETE'});
+    return true;
+  }catch(e){
+    // If it disappeared between listing and DELETE, consider the deletion
+    // complete rather than leaving an orphaned DB record.
+    if(Number(e?.status)===404)return true;
+    throw e;
+  }
 }
 
 async function testGitHub(env){
@@ -364,6 +399,32 @@ function hydrateResources(rows){return (rows||[]).map(r=>({...r,category_ids:r.c
 
 export default {async fetch(request,env){
  if(request.method==='OPTIONS')return cors(new Response(null,{status:204}),request); const url=new URL(request.url);
+ // PDF engine assets are static runtime dependencies and MUST NOT wait for D1 schema initialization.
+ // Keeping this route before ensureSchema prevents the form page from hanging at the engine-loader stage.
+ if((url.pathname==='/api/pdf-engine/pdfjs'||url.pathname==='/api/pdf-engine/pdf-lib')&&request.method==='GET'){
+  const isLib=url.pathname.endsWith('pdf-lib');
+  const sources=isLib?[
+   'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js',
+   'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js'
+  ]:[
+   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+   'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js'
+  ];
+  for(const srcUrl of sources){
+   const ac=new AbortController(); const timer=setTimeout(()=>ac.abort(),5000);
+   try{
+    const src=await fetch(srcUrl,{signal:ac.signal});
+    if(src.ok){
+     const h=new Headers();
+     h.set('content-type','application/javascript; charset=utf-8');
+     h.set('cache-control','public, max-age=86400, stale-while-revalidate=604800');
+     h.set('x-pdf-engine','ready');
+     return new Response(src.body,{status:200,headers:h});
+    }
+   }catch(e){} finally{clearTimeout(timer)}
+  }
+  return cors(bad('تعذر تحميل محرك PDF من خادم الموقع.',503),request);
+ }
  try{await ensureSchema(env);
   if(url.pathname==='/api/settings'&&request.method==='GET')return cors(json({x:await getSetting(env,'social_x'),linkedin:await getSetting(env,'social_linkedin'),suggestion:await getSetting(env,'suggestion_url'),email:await getSetting(env,'contact_email'),title:await getSetting(env,'site_title'),description:await getSetting(env,'site_description'),keywords:await getSetting(env,'seo_keywords'),og_image:await getSetting(env,'og_image'),twitter_card:await getSetting(env,'twitter_card'),canonical:await getSetting(env,'canonical_url'),robots:await getSetting(env,'robots'),favicon:await getSetting(env,'favicon_url'),home:{hero:await getSetting(env,'home_hero')==='1',search:await getSetting(env,'home_search')==='1',categories:await getSetting(env,'home_categories')==='1',latest:await getSetting(env,'home_latest')==='1',featured:await getSetting(env,'home_featured')==='1',suggestion:await getSetting(env,'home_suggestion')==='1'}}),request);
   if(url.pathname==='/api/admin/login'&&request.method==='POST'){const guard=await loginGuard(env,request);if(!guard.allowed)return cors(json({error:'تم إيقاف محاولات تسجيل الدخول مؤقتًا. حاول بعد قليل.'},429,{'Retry-After':String(guard.retryAfter||900)}),request);const b=await request.json();const p=String(b.password||'');if(!p)return cors(bad('كلمة المرور مطلوبة'),request);if(!(await verifyAdminPassword(env,p))){await recordFailedLogin(env,guard.key);return cors(bad('كلمة المرور غير صحيحة',401),request)}await clearLoginAttempts(env,guard.key);return cors(json({ok:true,token:await createSession(env)}),request)}
@@ -421,29 +482,6 @@ export default {async fetch(request,env){
     if(!form||!form.enabled)return {resource:r,form:null,fields:[]};
     const {results}=await env.DB.prepare("SELECT * FROM form_fields WHERE form_id=? ORDER BY page,tab_order,id").bind(form.id).all();
     return {resource:r,form,fields:(results||[]).map(serializeFormField)};
-  }
-  // Same-origin PDF engine loader. Keeps form pages from blocking on a third-party <script> tag.
-  if((url.pathname==='/api/pdf-engine/pdfjs'||url.pathname==='/api/pdf-engine/pdf-lib')&&request.method==='GET'){
-    const isLib=url.pathname.endsWith('pdf-lib');
-    const sources=isLib?[
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js',
-      'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js'
-    ]:[
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
-      'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js'
-    ];
-    for(const srcUrl of sources){
-      try{
-        const ac=new AbortController();const timer=setTimeout(()=>ac.abort(),7000);
-        const src=await fetch(srcUrl,{signal:ac.signal,cf:{cacheTtl:86400,cacheEverything:true}});
-        clearTimeout(timer);
-        if(src.ok){
-          const h=new Headers();h.set('content-type','application/javascript; charset=utf-8');h.set('cache-control','public, max-age=86400, stale-while-revalidate=604800');h.set('x-pdf-engine','same-origin');
-          return new Response(src.body,{status:200,headers:h});
-        }
-      }catch(e){}
-    }
-    return cors(bad('تعذر تحميل محرك PDF من المصادر المتاحة',503),request);
   }
   if(url.pathname==='/api/forms'&&request.method==='GET'){
     const {results}=await env.DB.prepare("SELECT fd.resource_id,fd.version,COUNT(ff.id) field_count FROM form_definitions fd JOIN resources r ON r.id=fd.resource_id AND r.status='published' LEFT JOIN form_fields ff ON ff.form_id=fd.id WHERE fd.enabled=1 GROUP BY fd.resource_id").all();
