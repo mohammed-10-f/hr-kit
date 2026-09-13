@@ -3,7 +3,7 @@
 :root{--navy:#082b63;--navy2:#0b3b82;--navy-deep:#061f47;--ink:#0c2b56;--muted:#718198;--line:#e4eaf2;--bg:#f6f8fb;--card:#fff;--soft:#eef4fc;--accent:#c8932c;--accent-text:#8a5f12;--accent-soft:#fbf1de;--green:#1f9d68;--gold:#d6a11d;--danger:#c95050;--radius:18px;--shadow:0 12px 35px rgba(8,43,99,.07);--container:1160px}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans Arabic',Tahoma,Arial,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+body{margin:0;background:var(--bg) url('/assets/hr-background.svg') center top/cover fixed;color:var(--ink);font-family:'IBM Plex Sans Arabic',Tahoma,Arial,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
 a{text-decoration:none;color:inherit}
 button,input,textarea,select{font:inherit}
 button{cursor:pointer}
@@ -79,7 +79,7 @@ mark{background:var(--accent-soft);color:var(--navy-deep);border-radius:3px;padd
 @media (prefers-reduced-motion:reduce){.float-card{animation:none}}
 
 /* ===== sections ===== */
-.section{padding-top:58px}
+.section{padding-top:44px}
 .section-heading{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:20px}
 .section-kicker{font-size:10px;color:var(--accent-text);font-weight:800;letter-spacing:.5px;display:block;margin-bottom:4px}
 .section-heading h2,.panel-head h2{margin:0;font-size:22px;color:var(--navy);letter-spacing:-.4px}
@@ -760,8 +760,9 @@ footer{
     min-height:36px;
     flex:0 0 auto;
   }
-  .header-actions .social-btn{display:none!important;}
-  .header-actions .icon-btn{width:34px;height:34px;min-width:34px;}
+  /* Mobile header: social links replace the search shortcut. */
+  .header-actions .icon-btn{display:none!important;}
+  .header-actions .social-btn{display:inline-flex!important;width:34px;height:34px;min-width:34px;}
 }
 
 @media (max-width:700px){
@@ -770,7 +771,7 @@ footer{
   .hero h1{font-size:32px;}
   .hero p{margin-bottom:20px;}
   .hero-ctas{margin-top:16px;}
-  .section{padding-top:28px;}
+  .section{padding-top:20px;}
   .section-heading{margin-bottom:12px;}
 }
 
@@ -779,5 +780,5 @@ footer{
   .hero h1{font-size:29px;}
   .hero p{font-size:12px;margin-bottom:17px;}
   .hero-ctas{margin-top:13px;gap:8px;}
-  .section{padding-top:24px;}
+  .section{padding-top:20px;}
 }
