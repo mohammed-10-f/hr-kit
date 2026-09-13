@@ -98,7 +98,7 @@ async function loadPdf(){
  }catch(e){throw e}
 }
 async function load(){
- try{$('#pdf-workspace').innerHTML='<div class="loading-state">جاري تحميل بيانات الملف…</div>';const d=await api('/api/admin/forms/'+resourceId);state.resource=d.resource;state.form=d.form;state.fields=(d.fields||[]).map(f=>({...f,id:String(f.id),options:f.options||[],settings:f.settings||{}}));$('#form-title').textContent=state.resource.title;state.history=[snapshot()];updateHistoryButtons();await loadPdf();setSave('لم يتم تعديل شيء');}
+ try{await window.__pdfEngineReady;$('#pdf-workspace').innerHTML='<div class="loading-state">جاري تحميل بيانات الملف…</div>';const d=await api('/api/admin/forms/'+resourceId);state.resource=d.resource;state.form=d.form;state.fields=(d.fields||[]).map(f=>({...f,id:String(f.id),options:f.options||[],settings:f.settings||{}}));$('#form-title').textContent=state.resource.title;state.history=[snapshot()];updateHistoryButtons();await loadPdf();setSave('لم يتم تعديل شيء');}
  catch(e){$('#pdf-workspace').innerHTML=`<div class="loading-state">${esc(e.message)}</div>`;toast(e.message,'error')}
 }
 function scheduleSave(){clearTimeout(state.saveTimer);state.saveTimer=setTimeout(save,900);setSave('حفظ تلقائي قريب…')}

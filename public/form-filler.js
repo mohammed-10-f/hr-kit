@@ -9,6 +9,13 @@ function fieldKey(f){return String(f.id)}
 function getValue(f){return state.values[fieldKey(f)]??''}
 function setValue(f,v){state.values[fieldKey(f)]=v;saveDraft();updateSummary();const el=document.querySelector(`[data-field-id="${CSS.escape(fieldKey(f))}"]`);if(el&&f.type!=='static'&&f.type!=='signature')updateFieldDisplay(f,el)}
 function displayValue(f,v){if(f.type==='date'&&v){const m=String(v).match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]}/${m[2]}/${m[1]}`:v}return String(v??'')}
+
+async function loadPdfLib(){
+ if(window.PDFLib)return window.PDFLib;
+ const urls=['https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js?v=1171','https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js?v=1171'];
+ for(const u of urls){try{await new Promise((resolve,reject)=>{const s=document.createElement('script');let done=false;const t=setTimeout(()=>{if(done)return;done=true;s.remove();reject(new Error('timeout'))},7000);s.src=u;s.async=true;s.onload=()=>{if(done)return;done=true;clearTimeout(t);resolve()};s.onerror=()=>{if(done)return;done=true;clearTimeout(t);s.remove();reject(new Error('load failed'))};document.head.appendChild(s)});if(window.PDFLib)return window.PDFLib}catch(e){}}
+ throw new Error('تعذر تشغيل محرك إنشاء PDF. تحقق من اتصال الإنترنت ثم أعد المحاولة.');
+}
 function loadDraft(){try{const d=JSON.parse(localStorage.getItem(draftKey)||'{}');if(d&&typeof d==='object')state.values=d.values||{}}catch{}}
 function saveDraft(){try{localStorage.setItem(draftKey,JSON.stringify({values:state.values,savedAt:new Date().toISOString()}));$('#draft-state').textContent='محفوظ محليًا الآن'}catch{ $('#draft-state').textContent='الحفظ المحلي غير متاح'}}
 function updateSummary(){const wrap=$('#field-summary');wrap.innerHTML=state.data.fields.filter(f=>!['static','signature'].includes(f.type)).sort((a,b)=>(a.tab_order||0)-(b.tab_order||0)).map(f=>`<button type="button" class="${f.required?'required':''}" data-jump="${esc(f.id)}">${esc(f.name)}</button>`).join('')||'<span class="side-note">لا توجد حقول تعبئة.</span>';wrap.querySelectorAll('[data-jump]').forEach(b=>b.onclick=()=>{const el=document.querySelector(`[data-field-id="${CSS.escape(b.dataset.jump)}"]`);el?.scrollIntoView({behavior:'smooth',block:'center'});el?.focus()})}
@@ -41,6 +48,7 @@ async function fetchArrayBufferWithTimeout(url, options={}, timeoutMs=20000){
  }finally{clearTimeout(timer)}
 }
 async function loadPdf(){
+ await window.__pdfEngineReady;
  try{
   $('#fill-workspace').innerHTML='<div class="loading-state">1/3 — جاري الاتصال بملف النموذج…<br><small>يتم التحقق من ملف PDF</small></div>';
   const directUrl=String(state.data?.resource?.file_url||'').trim();
@@ -67,6 +75,7 @@ function normalizeDigits(v){return String(v||'').replace(/[٠-٩]/g,d=>String('�
 function validateField(f){const v=getValue(f);if(f.required&&(!String(v).trim()||v===false))return `الحقل "${f.name}" مطلوب`;if(v===false||v==='')return '';if(f.min_length&&String(v).length<f.min_length)return `الحقل "${f.name}" يجب ألا يقل عن ${f.min_length} أحرف`;if(f.max_length&&String(v).length>f.max_length)return `الحقل "${f.name}" تجاوز الحد المسموح`;if(f.type==='number'&&!/^\d+$/.test(normalizeDigits(v)))return `الحقل "${f.name}" يقبل الأرقام فقط`;if(f.type==='date'&&!/^\d{4}-\d{2}-\d{2}$/.test(v))return `التاريخ في "${f.name}" غير صحيح`;return ''}
 function validateAll(){document.querySelectorAll('.fill-field').forEach(e=>e.classList.remove('invalid'));for(const f of state.data.fields){const err=validateField(f);if(err){const el=document.querySelector(`[data-field-id="${CSS.escape(fieldKey(f))}"]`);el?.classList.add('invalid');el?.scrollIntoView({behavior:'smooth',block:'center'});el?.focus?.();return err}}return ''}
 async function generatePdf(){
+ await loadPdfLib();
  const err=validateAll();if(err){toast(err,'error');return}
  const btn=$('#generate-btn');btn.disabled=true;btn.textContent='جاري إنشاء PDF…';
  try{await document.fonts?.ready;const bytes=await (async()=>{try{return await fetchArrayBufferWithTimeout(String(state.data.resource.file_url||''),{mode:'cors'},20000)}catch(e){return await fetchArrayBufferWithTimeout('/api/forms/'+resourceId+'/source',{},20000)}})();const doc=await PDFLib.PDFDocument.load(bytes);const pages=doc.getPages();

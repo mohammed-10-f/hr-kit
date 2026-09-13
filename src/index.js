@@ -364,37 +364,6 @@ function hydrateResources(rows){return (rows||[]).map(r=>({...r,category_ids:r.c
 
 export default {async fetch(request,env){
  if(request.method==='OPTIONS')return cors(new Response(null,{status:204}),request); const url=new URL(request.url);
- // Self-host the PDF libraries through the Worker so the form pages never depend on a browser reaching a third-party CDN.
- const vendorSources={
-  '/vendor/pdfjs.min.js':['https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js','https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js'],
-  '/vendor/pdf-lib.min.js':['https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js','https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js']
- };
- if(request.method==='GET' && vendorSources[url.pathname]){
-  try{
-   const cacheKey=new Request(url.toString(),{method:'GET'});
-   const cached=await caches.default.match(cacheKey);
-   if(cached)return cached;
-   let src=null,lastError=null;
-   for(const source of vendorSources[url.pathname]){
-    const controller=new AbortController();
-    const timer=setTimeout(()=>controller.abort(),8000);
-    try{
-     const r=await fetch(source,{redirect:'follow',signal:controller.signal});
-     if(r.ok){src=r;break;}
-     lastError=new Error('HTTP '+r.status);
-    }catch(e){lastError=e.name==='AbortError'?new Error('CDN timeout'):e;}
-    finally{clearTimeout(timer)}
-   }
-   if(!src)throw lastError||new Error('Vendor unavailable');
-   const headers=new Headers(src.headers);
-   headers.set('content-type','application/javascript; charset=utf-8');
-   headers.set('cache-control','public, max-age=31536000, immutable');
-   headers.set('x-content-type-options','nosniff');
-   const out=new Response(src.body,{status:200,headers});
-   await caches.default.put(cacheKey,out.clone());
-   return out;
-  }catch(e){return new Response('/* PDF library unavailable: '+String(e.message||e).replace(/\*\//g,'')+' */',{status:503,headers:{'content-type':'application/javascript; charset=utf-8','cache-control':'no-store'}})}
- }
  try{await ensureSchema(env);
   if(url.pathname==='/api/settings'&&request.method==='GET')return cors(json({x:await getSetting(env,'social_x'),linkedin:await getSetting(env,'social_linkedin'),suggestion:await getSetting(env,'suggestion_url'),email:await getSetting(env,'contact_email'),title:await getSetting(env,'site_title'),description:await getSetting(env,'site_description'),keywords:await getSetting(env,'seo_keywords'),og_image:await getSetting(env,'og_image'),twitter_card:await getSetting(env,'twitter_card'),canonical:await getSetting(env,'canonical_url'),robots:await getSetting(env,'robots'),favicon:await getSetting(env,'favicon_url'),home:{hero:await getSetting(env,'home_hero')==='1',search:await getSetting(env,'home_search')==='1',categories:await getSetting(env,'home_categories')==='1',latest:await getSetting(env,'home_latest')==='1',featured:await getSetting(env,'home_featured')==='1',suggestion:await getSetting(env,'home_suggestion')==='1'}}),request);
   if(url.pathname==='/api/admin/login'&&request.method==='POST'){const guard=await loginGuard(env,request);if(!guard.allowed)return cors(json({error:'تم إيقاف محاولات تسجيل الدخول مؤقتًا. حاول بعد قليل.'},429,{'Retry-After':String(guard.retryAfter||900)}),request);const b=await request.json();const p=String(b.password||'');if(!p)return cors(bad('كلمة المرور مطلوبة'),request);if(!(await verifyAdminPassword(env,p))){await recordFailedLogin(env,guard.key);return cors(bad('كلمة المرور غير صحيحة',401),request)}await clearLoginAttempts(env,guard.key);return cors(json({ok:true,token:await createSession(env)}),request)}
