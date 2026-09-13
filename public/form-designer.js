@@ -15,9 +15,16 @@ function undo(){if(state.history.length<2)return;const current=state.history.pop
 function redo(){if(!state.future.length)return;const s=state.future.pop();state.history.push(s);restore(s);scheduleSave()}
 function fieldDefault(page,x,y){return{id:'f-'+crypto.randomUUID(),name:'حقل جديد',type:'short_text',page,x,y,width:180,height:32,font_size:12,font_family:'IBM Plex Sans Arabic',align:'right',direction:'rtl',required:false,max_length:null,min_length:null,options:[],tab_order:state.fields.length,placeholder:'',static_value:'',settings:{}}}
 function fieldLabel(f){return f.name||'حقل'}
-function renderPageList(){const pages=$('#page-list');pages.innerHTML=state.pages.map((p,i)=>`<button class="page-chip ${state.page===i+1?'active':''}" data-page="${i+1}">صفحة ${i+1}</button>`).join('');pages.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>{state.page=Number(b.dataset.page);renderCurrentPage();renderPageList()})}
-function renderCurrentPage(){
- const workspace=$('#pdf-workspace');const page=state.pages[state.page-1];if(!page)return;
+function renderPageList(){const pages=$('#page-list');pages.innerHTML=Array.from({length:state.pdf?.numPages||0},(_,i)=>`<button class="page-chip ${state.page===i+1?'active':''}" data-page="${i+1}">صفحة ${i+1}</button>`).join('');pages.querySelectorAll('[data-page]').forEach(b=>b.onclick=async()=>{state.page=Number(b.dataset.page);renderPageList();await renderCurrentPage()})}
+async function loadPage(index){
+ if(state.pages[index])return state.pages[index];
+ if(state.pagePromises?.[index])return state.pagePromises[index];
+ state.pagePromises=state.pagePromises||{};
+ state.pagePromises[index]=(async()=>{const p=await state.pdf.getPage(index+1);const vp=p.getViewport({scale:1});const c=document.createElement('canvas');const dpr=Math.min(2,window.devicePixelRatio||1);c.width=Math.ceil(vp.width*dpr);c.height=Math.ceil(vp.height*dpr);await p.render({canvasContext:c.getContext('2d'),viewport:p.getViewport({scale:dpr})}).promise;const page={width:vp.width,height:vp.height,canvas:c};state.pages[index]=page;return page})().finally(()=>delete state.pagePromises[index]);
+ return state.pagePromises[index];
+}
+async function renderCurrentPage(){
+ const workspace=$('#pdf-workspace');const page=await loadPage(state.page-1);if(!page)return;
  $('#page-label').textContent='الصفحة '+state.page;$('#page-size').textContent=`${Math.round(page.width)} × ${Math.round(page.height)} pt`;
  workspace.innerHTML='';const wrap=document.createElement('div');wrap.className='pdf-page-wrap';wrap.style.width=(page.width*state.scale)+'px';wrap.style.height=(page.height*state.scale)+'px';
  const canvas=document.createElement('canvas');canvas.width=Math.ceil(page.canvas.width);canvas.height=Math.ceil(page.canvas.height);canvas.style.width='100%';canvas.style.height='100%';canvas.getContext('2d').drawImage(page.canvas,0,0);wrap.appendChild(canvas);
@@ -63,9 +70,10 @@ $('#undo-btn').onclick=undo;$('#redo-btn').onclick=redo;
 $('#zoom-in').onclick=()=>{state.scale=Math.min(2.5,state.scale+.1);renderCurrentPage();$('#zoom-value').textContent=Math.round(state.scale*100)+'%'};
 $('#zoom-out').onclick=()=>{state.scale=Math.max(.55,state.scale-.1);renderCurrentPage();$('#zoom-value').textContent=Math.round(state.scale*100)+'%'};
 async function loadPdf(){
- const loading=pdfjsLib.getDocument({url:'/api/admin/forms/'+resourceId+'/source',httpHeaders:{Authorization:'Bearer '+token},withCredentials:false});state.pdf=await loading.promise;
- state.pages=[];for(let i=1;i<=state.pdf.numPages;i++){const p=await state.pdf.getPage(i);const vp=p.getViewport({scale:1});const c=document.createElement('canvas');const dpr=Math.min(2,window.devicePixelRatio||1);c.width=Math.ceil(vp.width*dpr);c.height=Math.ceil(vp.height*dpr);const ctx=c.getContext('2d');await p.render({canvasContext:ctx,viewport:p.getViewport({scale:dpr})}).promise;state.pages.push({width:vp.width,height:vp.height,canvas:c});}
- renderPageList();renderCurrentPage();
+ const loading=pdfjsLib.getDocument({url:'/api/admin/forms/'+resourceId+'/source',httpHeaders:{Authorization:'Bearer '+token},withCredentials:false,disableAutoFetch:false,disableStream:false,rangeChunkSize:65536});state.pdf=await loading.promise;
+ state.pages=new Array(state.pdf.numPages);state.pagePromises={};renderPageList();await renderCurrentPage();
+ // Render remaining pages in the background so the first page is usable immediately.
+ for(let i=1;i<state.pdf.numPages;i++)loadPage(i).catch(()=>{});
 }
 async function load(){
  try{const d=await api('/api/admin/forms/'+resourceId);state.resource=d.resource;state.form=d.form;state.fields=(d.fields||[]).map(f=>({...f,id:String(f.id),options:f.options||[],settings:f.settings||{}}));$('#form-title').textContent=state.resource.title;state.history=[snapshot()];updateHistoryButtons();await loadPdf();setSave('لم يتم تعديل شيء');}

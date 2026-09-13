@@ -439,9 +439,20 @@ export default {async fetch(request,env){
     if(!data?.resource)return cors(bad('الملف غير موجود',404),request);
     const isPdf=String(data.resource.file_type||'').toLowerCase().includes('pdf')||/\.pdf$/i.test(String(data.resource.file_name||''));
     if(!isPdf)return cors(bad('الملف ليس PDF',415),request);
-    try{const src=await fetch(data.resource.file_url,{redirect:'follow'});if(!src.ok)return cors(bad('تعذر تحميل ملف PDF الأصلي',502),request);
-      const h=new Headers(src.headers);h.set('content-type','application/pdf');h.set('cache-control','public, max-age=300');h.set('content-disposition','inline');
-      return new Response(src.body,{status:200,headers:h});
+    try{
+      // Forward byte-range requests so PDF.js can load large PDFs progressively.
+      // This endpoint remains read-only and does not touch the existing download flow.
+      const range=request.headers.get('range');
+      const fetchHeaders=new Headers();
+      if(range)fetchHeaders.set('range',range);
+      const src=await fetch(data.resource.file_url,{redirect:'follow',headers:fetchHeaders});
+      if(!src.ok && src.status!==206)return cors(bad('تعذر تحميل ملف PDF الأصلي',502),request);
+      const h=new Headers(src.headers);
+      h.set('content-type','application/pdf');
+      h.set('content-disposition','inline');
+      h.set('accept-ranges',src.headers.get('accept-ranges')||'bytes');
+      h.set('cache-control','public, max-age=300, stale-while-revalidate=60');
+      return new Response(src.body,{status:src.status,headers:h});
     }catch(e){return cors(bad('تعذر تحميل ملف PDF الأصلي',502),request)}
   }
   if(url.pathname==='/api/admin/forms'&&request.method==='GET')return admin(request,env,async()=>{
@@ -472,7 +483,19 @@ export default {async fetch(request,env){
   if(adminFormSource&&request.method==='GET')return admin(request,env,async()=>{
     const id=Number(adminFormSource[1]),data=await getForm(env,id,true);if(!data)return bad('الملف غير موجود',404);
     const isPdf=String(data.resource.file_type||'').toLowerCase().includes('pdf')||/\.pdf$/i.test(String(data.resource.file_name||''));if(!isPdf)return bad('الملف ليس PDF',415);
-    try{const src=await fetch(data.resource.file_url,{redirect:'follow'});if(!src.ok)return bad('تعذر تحميل ملف PDF الأصلي',502);const h=new Headers(src.headers);h.set('content-type','application/pdf');h.set('cache-control','private, max-age=60');h.set('content-disposition','inline');return new Response(src.body,{status:200,headers:h})}catch(e){return bad('تعذر تحميل ملف PDF الأصلي',502)}
+    try{
+      const range=request.headers.get('range');
+      const fetchHeaders=new Headers();
+      if(range)fetchHeaders.set('range',range);
+      const src=await fetch(data.resource.file_url,{redirect:'follow',headers:fetchHeaders});
+      if(!src.ok && src.status!==206)return bad('تعذر تحميل ملف PDF الأصلي',502);
+      const h=new Headers(src.headers);
+      h.set('content-type','application/pdf');
+      h.set('content-disposition','inline');
+      h.set('accept-ranges',src.headers.get('accept-ranges')||'bytes');
+      h.set('cache-control','private, max-age=60');
+      return new Response(src.body,{status:src.status,headers:h});
+    }catch(e){return bad('تعذر تحميل ملف PDF الأصلي',502)}
   });
   const copyFormMatch=url.pathname.match(/^\/api\/admin\/forms\/(\d+)\/copy$/);
   if(copyFormMatch&&request.method==='POST')return admin(request,env,async()=>{
