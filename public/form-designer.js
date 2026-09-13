@@ -4,7 +4,12 @@ const qs=new URLSearchParams(location.search), resourceId=Number(qs.get('id'));
 if(!token||!resourceId){location.href='/admin.html';throw new Error('Missing admin session/resource');}
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 const state={resource:null,form:null,fields:[],pdf:null,pages:[],page:1,scale:1,addMode:false,selected:null,history:[],future:[],saving:false,saveTimer:null};
-async function api(url,opts={}){const r=await fetch(url,{...opts,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json',...(opts.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok){if(r.status===401){sessionStorage.removeItem('hrkit_admin_token');location.href='/admin.html';}throw new Error(d.error||'تعذر تنفيذ العملية');}return d}
+async function api(url,opts={}){
+ const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),15000);
+ try{const r=await fetch(url,{...opts,signal:controller.signal,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json',...(opts.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok){if(r.status===401){sessionStorage.removeItem('hrkit_admin_token');location.href='/admin.html';}throw new Error(d.error||'تعذر تنفيذ العملية');}return d}
+ catch(e){if(e.name==='AbortError')throw new Error('انتهت مهلة الاتصال بالخادم. أعد المحاولة.');throw e}
+ finally{clearTimeout(timer)}
+}
 function toast(msg,type=''){const el=$('#toast');el.textContent=msg;el.className='fb-toast show '+type;clearTimeout(window._toast);window._toast=setTimeout(()=>el.className='fb-toast',2600)}
 function setSave(text,kind=''){const el=$('#save-state');el.textContent=text;el.className='save-state '+kind}
 function snapshot(){return JSON.stringify(state.fields.map(f=>({...f})))}
@@ -69,22 +74,31 @@ $('#copy-field').onclick=()=>{const f=selectedField();if(!f)return;const c={...f
 $('#undo-btn').onclick=undo;$('#redo-btn').onclick=redo;
 $('#zoom-in').onclick=()=>{state.scale=Math.min(2.5,state.scale+.1);renderCurrentPage();$('#zoom-value').textContent=Math.round(state.scale*100)+'%'};
 $('#zoom-out').onclick=()=>{state.scale=Math.max(.55,state.scale-.1);renderCurrentPage();$('#zoom-value').textContent=Math.round(state.scale*100)+'%'};
-async function loadPdf(){
- const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),30000);
+async function fetchPdfBytes(url,options={},timeoutMs=20000){
+ const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),timeoutMs);
  try{
-  $('#pdf-workspace').innerHTML='<div class="loading-state">جاري تحميل الـPDF…<br><small>يتم تجهيز الملف، يرجى الانتظار</small></div>';
-  const response=await fetch('/api/admin/forms/'+resourceId+'/source',{headers:{Authorization:'Bearer '+token},credentials:'same-origin',cache:'force-cache',signal:controller.signal});
-  if(!response.ok)throw new Error('تعذر تحميل ملف PDF الأصلي ('+response.status+')');
-  const bytes=await response.arrayBuffer();
-  if(!bytes.byteLength)throw new Error('ملف PDF فارغ أو غير صالح');
-  state.pdf=await pdfjsLib.getDocument({data:new Uint8Array(bytes),disableAutoFetch:true,disableStream:true}).promise;
-  state.pages=new Array(state.pdf.numPages);state.pagePromises={};renderPageList();await renderCurrentPage();
-  for(let i=1;i<state.pdf.numPages;i++)loadPage(i).catch(()=>{});
- }catch(e){if(e.name==='AbortError')throw new Error('استغرق تحميل ملف PDF أكثر من 30 ثانية. تحقق من الملف أو أعد المحاولة.');throw e}
+  const r=await fetch(url,{...options,signal:controller.signal,cache:'no-store'});
+  if(!r.ok)throw new Error('تعذر تحميل ملف PDF الأصلي ('+r.status+')');
+  const b=await r.arrayBuffer();if(!b.byteLength)throw new Error('ملف PDF فارغ أو غير صالح');return b;
+ }catch(e){if(e.name==='AbortError')throw new Error('انتهت مهلة تحميل ملف PDF. تحقق من رابط الملف أو حجم الملف ثم أعد المحاولة.');throw e}
  finally{clearTimeout(timer)}
 }
+async function loadPdf(){
+ $('#pdf-workspace').innerHTML='<div class="loading-state">1/3 — جاري الاتصال بملف النموذج…<br><small>يتم التحقق من ملف PDF</small></div>';
+ try{
+  const directUrl=String(state.resource?.file_url||'').trim();if(!directUrl)throw new Error('رابط ملف PDF غير موجود في بيانات الملف');
+  let bytes;
+  try{bytes=await fetchPdfBytes(directUrl,{mode:'cors'},20000)}
+  catch(e){$('#pdf-workspace').innerHTML='<div class="loading-state">2/3 — جاري استخدام مسار التحميل الآمن…<br><small>المسار المباشر لم يستجب، تتم المحاولة عبر الموقع</small></div>';bytes=await fetchPdfBytes('/api/admin/forms/'+resourceId+'/source',{headers:{Authorization:'Bearer '+token}},20000)}
+  $('#pdf-workspace').innerHTML='<div class="loading-state">3/3 — جاري تجهيز الصفحة الأولى…<br><small>يتم تحليل ملف PDF</small></div>';
+  state.pdf=await pdfjsLib.getDocument({data:new Uint8Array(bytes),disableAutoFetch:true,disableStream:true}).promise;
+  if(!state.pdf.numPages)throw new Error('ملف PDF لا يحتوي على صفحات');
+  state.pages=new Array(state.pdf.numPages);state.pagePromises={};renderPageList();await renderCurrentPage();
+  for(let i=1;i<state.pdf.numPages;i++)loadPage(i).catch(()=>{});
+ }catch(e){throw e}
+}
 async function load(){
- try{const d=await api('/api/admin/forms/'+resourceId);state.resource=d.resource;state.form=d.form;state.fields=(d.fields||[]).map(f=>({...f,id:String(f.id),options:f.options||[],settings:f.settings||{}}));$('#form-title').textContent=state.resource.title;state.history=[snapshot()];updateHistoryButtons();await loadPdf();setSave('لم يتم تعديل شيء');}
+ try{$('#pdf-workspace').innerHTML='<div class="loading-state">جاري تحميل بيانات الملف…</div>';const d=await api('/api/admin/forms/'+resourceId);state.resource=d.resource;state.form=d.form;state.fields=(d.fields||[]).map(f=>({...f,id:String(f.id),options:f.options||[],settings:f.settings||{}}));$('#form-title').textContent=state.resource.title;state.history=[snapshot()];updateHistoryButtons();await loadPdf();setSave('لم يتم تعديل شيء');}
  catch(e){$('#pdf-workspace').innerHTML=`<div class="loading-state">${esc(e.message)}</div>`;toast(e.message,'error')}
 }
 function scheduleSave(){clearTimeout(state.saveTimer);state.saveTimer=setTimeout(save,900);setSave('حفظ تلقائي قريب…')}

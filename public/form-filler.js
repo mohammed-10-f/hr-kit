@@ -26,21 +26,42 @@ function createInput(f,scale){const v=getValue(f),w=f.width*scale,h=f.height*sca
  el.dataset.fieldId=fieldKey(f);el.style.left=f.x*scale+'px';el.style.top=f.y*scale+'px';el.style.width=w+'px';el.style.height=h+'px';el.style.fontSize=Math.max(8,f.font_size*scale)+'px';el.style.fontFamily='"IBM Plex Sans Arabic", Tahoma, Arial, sans-serif';return el}
 async function renderPages(){const ws=$('#fill-workspace');ws.innerHTML='';for(let i=1;i<=state.pdf.numPages;i++){const page=state.pages[i-1];const wrap=document.createElement('div');wrap.className='pdf-page-wrap';if(!page){wrap.classList.add('pdf-page-loading');wrap.style.width='794px';wrap.style.minHeight='1123px';wrap.innerHTML='<div class="loading-state">جاري تجهيز الصفحة…</div>';ws.appendChild(wrap);continue}wrap.style.width=page.width*state.scale+'px';wrap.style.height=page.height*state.scale+'px';const c=document.createElement('canvas');c.width=page.canvas.width;c.height=page.canvas.height;c.style.width='100%';c.style.height='100%';c.getContext('2d').drawImage(page.canvas,0,0);wrap.appendChild(c);const overlay=document.createElement('div');overlay.className='pdf-page-overlay';pageFieldValues(i).forEach(f=>overlay.appendChild(createInput(f,state.scale)));wrap.appendChild(overlay);ws.appendChild(wrap)}state.rendered=true}
 async function loadPage(index){if(state.pages[index])return state.pages[index];state.pagePromises=state.pagePromises||{};if(state.pagePromises[index])return state.pagePromises[index];state.pagePromises[index]=(async()=>{const p=await state.pdf.getPage(index+1),vp=p.getViewport({scale:1}),dpr=Math.min(2,window.devicePixelRatio||1),c=document.createElement('canvas');c.width=Math.ceil(vp.width*dpr);c.height=Math.ceil(vp.height*dpr);await p.render({canvasContext:c.getContext('2d'),viewport:p.getViewport({scale:dpr})}).promise;return state.pages[index]={width:vp.width,height:vp.height,canvas:c}})().finally(()=>delete state.pagePromises[index]);return state.pagePromises[index]}
-async function loadPdf(){
- const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),30000);
+async function fetchArrayBufferWithTimeout(url, options={}, timeoutMs=20000){
+ const controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(),timeoutMs);
  try{
-  $('#fill-workspace').innerHTML='<div class="loading-state">جاري تحميل الـPDF…<br><small>يتم تجهيز الملف، يرجى الانتظار</small></div>';
-  const response=await fetch('/api/forms/'+resourceId+'/source',{signal:controller.signal,cache:'force-cache'});
+  const response=await fetch(url,{...options,signal:controller.signal,cache:'no-store'});
   if(!response.ok)throw new Error('تعذر تحميل ملف PDF الأصلي ('+response.status+')');
   const bytes=await response.arrayBuffer();
   if(!bytes.byteLength)throw new Error('ملف PDF فارغ أو غير صالح');
+  return bytes;
+ }catch(e){
+  if(e.name==='AbortError')throw new Error('انتهت مهلة تحميل ملف PDF. تحقق من رابط الملف أو حجم الملف ثم أعد المحاولة.');
+  throw e;
+ }finally{clearTimeout(timer)}
+}
+async function loadPdf(){
+ try{
+  $('#fill-workspace').innerHTML='<div class="loading-state">1/3 — جاري الاتصال بملف النموذج…<br><small>يتم التحقق من ملف PDF</small></div>';
+  const directUrl=String(state.data?.resource?.file_url||'').trim();
+  if(!directUrl)throw new Error('رابط ملف PDF غير موجود في بيانات النموذج');
+  let bytes;
+  try{
+   // Prefer the original public file URL. This avoids proxying a large GitHub release through the Worker.
+   bytes=await fetchArrayBufferWithTimeout(directUrl,{mode:'cors'},20000);
+  }catch(directError){
+   $('#fill-workspace').innerHTML='<div class="loading-state">2/3 — جاري استخدام مسار التحميل الآمن…<br><small>المسار المباشر لم يستجب، تتم المحاولة عبر الموقع</small></div>';
+   bytes=await fetchArrayBufferWithTimeout('/api/forms/'+resourceId+'/source',{},20000);
+  }
+  $('#fill-workspace').innerHTML='<div class="loading-state">3/3 — جاري تجهيز الصفحة الأولى…<br><small>يتم تحليل ملف PDF</small></div>';
   state.pdf=await pdfjsLib.getDocument({data:new Uint8Array(bytes),disableAutoFetch:true,disableStream:true}).promise;
+  if(!state.pdf.numPages)throw new Error('ملف PDF لا يحتوي على صفحات');
   state.pages=new Array(state.pdf.numPages);state.pagePromises={};
-  const first=await loadPage(0);if(first){const available=Math.min(900,document.querySelector('.fill-main').clientWidth-20);state.scale=Math.min(1.4,Math.max(.65,available/first.width));}
+  const first=await loadPage(0);
+  if(first){const available=Math.min(900,document.querySelector('.fill-main').clientWidth-20);state.scale=Math.min(1.4,Math.max(.65,available/first.width));}
   await renderPages();
   for(let i=1;i<state.pdf.numPages;i++)loadPage(i).then(()=>renderPages()).catch(()=>{});
- }catch(e){if(e.name==='AbortError')throw new Error('استغرق تحميل ملف PDF أكثر من 30 ثانية. تحقق من الملف أو أعد المحاولة.');throw e}
- finally{clearTimeout(timer)}
+ }catch(e){throw e}
 }
 function normalizeDigits(v){return String(v||'').replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))}
 function validateField(f){const v=getValue(f);if(f.required&&(!String(v).trim()||v===false))return `الحقل "${f.name}" مطلوب`;if(v===false||v==='')return '';if(f.min_length&&String(v).length<f.min_length)return `الحقل "${f.name}" يجب ألا يقل عن ${f.min_length} أحرف`;if(f.max_length&&String(v).length>f.max_length)return `الحقل "${f.name}" تجاوز الحد المسموح`;if(f.type==='number'&&!/^\d+$/.test(normalizeDigits(v)))return `الحقل "${f.name}" يقبل الأرقام فقط`;if(f.type==='date'&&!/^\d{4}-\d{2}-\d{2}$/.test(v))return `التاريخ في "${f.name}" غير صحيح`;return ''}
@@ -48,12 +69,12 @@ function validateAll(){document.querySelectorAll('.fill-field').forEach(e=>e.cla
 async function generatePdf(){
  const err=validateAll();if(err){toast(err,'error');return}
  const btn=$('#generate-btn');btn.disabled=true;btn.textContent='جاري إنشاء PDF…';
- try{await document.fonts?.ready;const bytes=await fetch('/api/forms/'+resourceId+'/source').then(r=>{if(!r.ok)throw new Error('تعذر تحميل الملف الأصلي');return r.arrayBuffer()});const doc=await PDFLib.PDFDocument.load(bytes);const pages=doc.getPages();
+ try{await document.fonts?.ready;const bytes=await (async()=>{try{return await fetchArrayBufferWithTimeout(String(state.data.resource.file_url||''),{mode:'cors'},20000)}catch(e){return await fetchArrayBufferWithTimeout('/api/forms/'+resourceId+'/source',{},20000)}})();const doc=await PDFLib.PDFDocument.load(bytes);const pages=doc.getPages();
  for(const f of state.data.fields){const value=f.type==='static'?f.static_value:getValue(f);if(f.type==='signature'||value===''||value===false)continue;const page=pages[f.page-1];if(!page)continue;let text=displayValue(f,value);if(f.type==='checkbox')text='✓';const c=makeTextCanvas(text,f,false);const img=await doc.embedPng(c.toDataURL('image/png'));const ph=page.getHeight();page.drawImage(img,{x:f.x,y:ph-f.y-f.height,width:f.width,height:f.height})}
  const out=await doc.save();const blob=new Blob([out],{type:'application/pdf'}),url=URL.createObjectURL(blob),a=document.createElement('a');const base=(state.data.resource.file_name||state.data.resource.title||'form').replace(/\.pdf$/i,'').replace(/[\\/:*?"<>|]+/g,'-');a.href=url;a.download=base+'-filled-'+Date.now()+'.pdf';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);toast('تم إنشاء النموذج بنجاح','success')
  }catch(e){console.error(e);toast('تعذر إنشاء PDF. حاول مرة أخرى.','error')}finally{btn.disabled=false;btn.textContent='إنشاء النموذج'}}
 $('#generate-btn').onclick=generatePdf;
 $('#reset-btn').onclick=()=>{if(!confirm('سيتم مسح جميع البيانات المدخلة في هذا النموذج. هل تريد المتابعة؟'))return;state.values={};localStorage.removeItem(draftKey);renderPages();updateSummary();toast('تمت إعادة تعيين النموذج','success')};
 window.addEventListener('resize',()=>{clearTimeout(window._resize);window._resize=setTimeout(()=>{if(state.rendered)renderPages()},250)});
-async function load(){try{const d=await fetch('/api/forms/'+resourceId).then(async r=>{const x=await r.json();if(!r.ok)throw new Error(x.error||'تعذر تحميل النموذج');return x});state.data=d;$('#form-title').textContent=d.resource.title;$('#heading').textContent=d.resource.title;loadDraft();await loadPdf();updateSummary()}catch(e){$('#fill-workspace').innerHTML=`<div class="loading-state">${esc(e.message)}</div>`;toast(e.message,'error')}}
+async function load(){try{ $('#fill-workspace').innerHTML='<div class="loading-state">جاري تحميل بيانات النموذج…</div>'; const d=await fetchArrayBufferWithTimeout('/api/forms/'+resourceId,{headers:{Accept:'application/json'}},15000); const x=JSON.parse(new TextDecoder().decode(d)); if(!x||!x.resource)throw new Error('تعذر تحميل بيانات النموذج'); state.data=x;$('#form-title').textContent=x.resource.title;$('#heading').textContent=x.resource.title;loadDraft();await loadPdf();updateSummary()}catch(e){$('#fill-workspace').innerHTML=`<div class="loading-state">${esc(e.message)}</div>`;toast(e.message,'error')}}
 load();
