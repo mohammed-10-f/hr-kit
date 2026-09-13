@@ -399,15 +399,6 @@ function hydrateResources(rows){return (rows||[]).map(r=>({...r,category_ids:r.c
 
 export default {async fetch(request,env){
  if(request.method==='OPTIONS')return cors(new Response(null,{status:204}),request); const url=new URL(request.url);
- // PDF engine assets are static runtime dependencies and MUST NOT wait for D1 schema initialization.
- // Keeping this route before ensureSchema prevents the form page from hanging at the engine-loader stage.
- if((url.pathname==='/api/pdf-engine/pdfjs'||url.pathname==='/api/pdf-engine/pdf-lib')&&request.method==='GET'){
-  const isLib=url.pathname.endsWith('pdf-lib');
-  const target=isLib
-    ? 'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js'
-    : 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-  return Response.redirect(target,302);
- }
  try{await ensureSchema(env);
   if(url.pathname==='/api/settings'&&request.method==='GET')return cors(json({x:await getSetting(env,'social_x'),linkedin:await getSetting(env,'social_linkedin'),suggestion:await getSetting(env,'suggestion_url'),email:await getSetting(env,'contact_email'),title:await getSetting(env,'site_title'),description:await getSetting(env,'site_description'),keywords:await getSetting(env,'seo_keywords'),og_image:await getSetting(env,'og_image'),twitter_card:await getSetting(env,'twitter_card'),canonical:await getSetting(env,'canonical_url'),robots:await getSetting(env,'robots'),favicon:await getSetting(env,'favicon_url'),home:{hero:await getSetting(env,'home_hero')==='1',search:await getSetting(env,'home_search')==='1',categories:await getSetting(env,'home_categories')==='1',latest:await getSetting(env,'home_latest')==='1',featured:await getSetting(env,'home_featured')==='1',suggestion:await getSetting(env,'home_suggestion')==='1'}}),request);
   if(url.pathname==='/api/admin/login'&&request.method==='POST'){const guard=await loginGuard(env,request);if(!guard.allowed)return cors(json({error:'تم إيقاف محاولات تسجيل الدخول مؤقتًا. حاول بعد قليل.'},429,{'Retry-After':String(guard.retryAfter||900)}),request);const b=await request.json();const p=String(b.password||'');if(!p)return cors(bad('كلمة المرور مطلوبة'),request);if(!(await verifyAdminPassword(env,p))){await recordFailedLogin(env,guard.key);return cors(bad('كلمة المرور غير صحيحة',401),request)}await clearLoginAttempts(env,guard.key);return cors(json({ok:true,token:await createSession(env)}),request)}
@@ -477,6 +468,13 @@ export default {async fetch(request,env){
     if(!data.form)return cors(bad('هذا الملف ليس نموذجًا إلكترونيًا',404),request);
     return cors(json(data),request);
   }
+  async function fetchPdfSource(url, headers, timeoutMs=30000){
+    const ac=new AbortController();
+    const timer=setTimeout(()=>ac.abort(),timeoutMs);
+    try{return await fetch(url,{redirect:'follow',headers,signal:ac.signal});}
+    catch(e){if(e.name==='AbortError')throw new Error('PDF source timeout');throw e}
+    finally{clearTimeout(timer)}
+  }
   const publicFormSourceMatch=url.pathname.match(/^\/api\/forms\/(\d+)\/source$/);
   if(publicFormSourceMatch&&request.method==='GET'){
     const id=Number(publicFormSourceMatch[1]),data=await getForm(env,id,false);
@@ -489,7 +487,7 @@ export default {async fetch(request,env){
       const range=request.headers.get('range');
       const fetchHeaders=new Headers();
       if(range)fetchHeaders.set('range',range);
-      const src=await fetch(data.resource.file_url,{redirect:'follow',headers:fetchHeaders});
+      const ac=new AbortController(); const timer=setTimeout(()=>ac.abort(),30000); const src=await fetch(data.resource.file_url,{redirect:'follow',headers:fetchHeaders,signal:ac.signal}); clearTimeout(timer);
       if(!src.ok && src.status!==206)return cors(bad('تعذر تحميل ملف PDF الأصلي',502),request);
       const h=new Headers(src.headers);
       h.set('content-type','application/pdf');
@@ -531,7 +529,7 @@ export default {async fetch(request,env){
       const range=request.headers.get('range');
       const fetchHeaders=new Headers();
       if(range)fetchHeaders.set('range',range);
-      const src=await fetch(data.resource.file_url,{redirect:'follow',headers:fetchHeaders});
+      const ac=new AbortController(); const timer=setTimeout(()=>ac.abort(),30000); const src=await fetch(data.resource.file_url,{redirect:'follow',headers:fetchHeaders,signal:ac.signal}); clearTimeout(timer);
       if(!src.ok && src.status!==206)return bad('تعذر تحميل ملف PDF الأصلي',502);
       const h=new Headers(src.headers);
       h.set('content-type','application/pdf');

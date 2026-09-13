@@ -13,12 +13,14 @@
 <main class="fill-shell">
   <section class="fill-main">
     <div class="fill-heading"><div><small>LIVE FORM FILLING</small><h1 id="heading">جاري التحميل…</h1><p>اكتب داخل الحقول وشاهد البيانات تظهر مباشرة في النموذج.</p></div><span id="draft-state" class="save-state">يحفظ محليًا</span></div>
-    <div id="fill-workspace" class="pdf-workspace"><div class="loading-state">جاري تحميل محرك PDF…</div></div>
+    <div id="fill-workspace" class="pdf-workspace"><div class="loading-state">جاري تجهيز ملف النموذج…</div></div>
   </section>
   <aside class="fill-side"><div class="side-card"><div class="side-title">حقول النموذج</div><div id="field-summary" class="field-summary"></div><div class="side-note">يمكنك التنقل بين الحقول باستخدام Tab. البيانات تحفظ كمسودة على هذا الجهاز.</div></div></aside>
 </main>
 <div id="toast" class="fb-toast"></div>
-<script src="/api/pdf-engine/pdfjs?v=20260913-fix2"></script>
-<script src="/form-filler.js?v=20260913-fix2"></script>
+<script src="/vendor/pdf.min.js" onerror="window.__pdfEngineError='تعذر تحميل محرك PDF المحلي.'"></script>
+<script src="/vendor/pdf-lib.min.js" onerror="window.__pdfLibError='تعذر تحميل محرك إنشاء PDF المحلي.'"></script>
+<script>if(window.pdfjsLib){window.pdfjsLib.GlobalWorkerOptions.workerSrc='/vendor/pdf.worker.min.js';}</script>
+<script src="/form-filler.js?v=20260913-localpdf1"></script>
 </body>
 </html>

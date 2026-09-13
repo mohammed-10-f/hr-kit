@@ -5,11 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "deploy": "npm run prepare:pdf && npm run verify:pdf && wrangler deploy",
     "db:local": "wrangler d1 migrations apply hr_kit_db --local",
-    "db:remote": "wrangler d1 migrations apply hr_kit_db --remote"
+    "db:remote": "wrangler d1 migrations apply hr_kit_db --remote",
+    "prepare:pdf": "node scripts/prepare-pdf-assets.mjs",
+    "postinstall": "node scripts/prepare-pdf-assets.mjs",
+    "verify:pdf": "node scripts/verify-pdf-assets.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"
+  },
+  "dependencies": {
+    "pdf-lib": "1.17.1",
+    "pdfjs-dist": "3.11.174"
   }
 }

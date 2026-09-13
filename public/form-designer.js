@@ -1,31 +1,8 @@
 
-async function loadExternalScript(urls, label){
-  if(label==='PDF.js' && window.pdfjsLib) return window.pdfjsLib;
-  if(label==='PDF-Lib' && window.PDFLib) return window.PDFLib;
-  let last;
-  for(const url of urls){
-    try{
-      await new Promise((resolve,reject)=>{
-        const script=document.createElement('script');
-        let done=false;
-        const timer=setTimeout(()=>{if(done)return;done=true;script.remove();reject(new Error('انتهت مهلة تحميل '+label));},6000);
-        script.onload=()=>{if(done)return;done=true;clearTimeout(timer);resolve()};
-        script.onerror=()=>{if(done)return;done=true;clearTimeout(timer);script.remove();reject(new Error('تعذر تحميل '+label))};
-        script.src=url+(url.includes('?')?'&':'?')+'v=20260913fix3';
-        script.async=true;document.head.appendChild(script);
-      });
-      if(label==='PDF.js' && window.pdfjsLib) return window.pdfjsLib;
-      if(label==='PDF-Lib' && window.PDFLib) return window.PDFLib;
-      throw new Error('تم تحميل '+label+' لكن المكتبة غير متاحة');
-    }catch(e){last=e}
-  }
-  throw last||new Error('تعذر تحميل '+label);
-}
-async function ensurePdfJs(){
-  if(window.pdfjsLib) return window.pdfjsLib;
-  const lib=await loadExternalScript(['/api/pdf-engine/pdfjs','https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js','https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js'],'PDF.js');
-  if(lib.GlobalWorkerOptions) lib.GlobalWorkerOptions.workerSrc='';
-  return lib;
+function requirePdfJs(){
+  if(!window.pdfjsLib){throw new Error(window.__pdfEngineError||'محرك PDF المحلي غير متاح. نفّذ npm install ثم npm run deploy.');}
+  if(window.pdfjsLib.GlobalWorkerOptions)window.pdfjsLib.GlobalWorkerOptions.workerSrc='/vendor/pdf.worker.min.js';
+  return window.pdfjsLib;
 }
 const $=s=>document.querySelector(s);
 const token=sessionStorage.getItem('hrkit_admin_token');
@@ -113,7 +90,7 @@ async function fetchPdfBytes(url,options={},timeoutMs=20000){
  finally{clearTimeout(timer)}
 }
 async function loadPdf(){
- try{ await ensurePdfJs(); }catch(e){ throw new Error('تعذر تشغيل محرك PDF: '+e.message); }
+ requirePdfJs();
  $('#pdf-workspace').innerHTML='<div class="loading-state">1/3 — جاري الاتصال بملف النموذج…<br><small>يتم التحقق من ملف PDF</small></div>';
  try{
   const directUrl=String(state.resource?.file_url||'').trim();if(!directUrl)throw new Error('رابط ملف PDF غير موجود في بيانات الملف');
